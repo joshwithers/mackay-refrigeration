@@ -1,0 +1,183 @@
+---
+// Base.astro — Refrigeration site layout
+// Handles: grid-bg, vapour layer, TempGauge, Nav, global scripts
+import Seo from '../components/seo/Seo.astro';
+import Nav from '../components/Nav.astro';
+import TempGauge from '../components/TempGauge.astro';
+import { defaultTheme, fullUrl } from '../config/site';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+
+const localBusinessSchema = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": `${fullUrl()}#business`,
+  "name": "Mackay Refrigeration & Air-Conditioning",
+  "alternateName": "Mackay Refrigeration Pty Ltd",
+  "description": "Commercial refrigeration and air conditioning for businesses across Mackay, Airlie Beach, Bowen, and Moranbah. QBCC licensed, Arctick certified.",
+  "url": fullUrl(),
+  "telephone": "+61749531245",
+  "email": "service@mackayrefrig.com.au",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "PO Box 4087",
+    "addressLocality": "Mackay",
+    "addressRegion": "QLD",
+    "postalCode": "4740",
+    "addressCountry": "AU"
+  },
+  "openingHoursSpecification": [
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday"],
+      "opens": "07:30",
+      "closes": "16:30"
+    },
+    {
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Friday"],
+      "opens": "07:30",
+      "closes": "14:00"
+    }
+  ],
+  "areaServed": [
+    { "@type": "City", "name": "Mackay" },
+    { "@type": "City", "name": "Airlie Beach" },
+    { "@type": "City", "name": "Bowen" },
+    { "@type": "City", "name": "Moranbah" }
+  ],
+  "identifier": { "@type": "PropertyValue", "name": "ABN", "value": "32107715766" }
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <Seo title={title} description={description} />
+
+    <!-- Theme detection — runs before render to avoid flash of wrong theme -->
+    <script is:inline define:vars={{ defaultTheme }}>
+      (function() {
+        const stored = typeof localStorage !== 'undefined' && localStorage.getItem('theme');
+        document.documentElement.setAttribute('data-theme', stored || defaultTheme);
+      })();
+    </script>
+
+    <!-- Theme colour for mobile browser chrome -->
+    <meta name="theme-color" content="#0a0e17" />
+
+    <!-- LocalBusiness structured data -->
+    <script type="application/ld+json" set:html={JSON.stringify(localBusinessSchema)} />
+
+    <!-- Per-page additional schema / meta -->
+    <slot name="head" />
+
+    <!-- Ahrefs analytics -->
+    <script src="https://analytics.ahrefs.com/analytics.js" data-key="Ars1Hfwgj1reUmqxCDwXgw" async is:inline></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="grid-bg" aria-hidden="true"></div>
+
+    <div class="vapour-layer" aria-hidden="true">
+      <div class="vapour-blob"></div>
+      <div class="vapour-blob"></div>
+      <div class="vapour-blob"></div>
+    </div>
+
+    <TempGauge />
+    <Nav />
+
+    <main id="main-content" class="content">
+      <slot />
+    </main>
+
+    <!-- noscript: show all reveal elements if JS is disabled -->
+    <noscript>
+      <style>.reveal { opacity: 1 !important; transform: none !important; }</style>
+    </noscript>
+
+    <!-- All interactive JS runs after slot content is rendered -->
+    <script is:inline>
+      // ─── Scroll reveal ───
+      const reveals = document.querySelectorAll('.reveal');
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+      }, { threshold: 0.15 });
+      reveals.forEach(el => revealObserver.observe(el));
+
+      // ─── Counter animation ───
+      const counters = document.querySelectorAll('[data-count]');
+      const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          const el = entry.target;
+          const target = parseInt(el.dataset.count);
+          let current = 0;
+          const step = Math.ceil(target / 60);
+          const interval = setInterval(() => {
+            current += step;
+            if (current >= target) { current = target; clearInterval(interval); }
+            el.textContent = current + '+';
+          }, 25);
+          counterObserver.unobserve(el);
+        });
+      }, { threshold: 0.5 });
+      counters.forEach(el => counterObserver.observe(el));
+
+      // ─── Temperature gauge reacts to scroll (rAF-throttled) ───
+      const tempFill    = document.getElementById('tempFill');
+      const tempReading = document.getElementById('tempReading');
+
+      const temps = [
+        { pos: 0,   temp: 22,  label: '+22°C' },
+        { pos: 0.3, temp: 2,   label: '+2°C'  },
+        { pos: 0.5, temp: -10, label: '−10°C' },
+        { pos: 0.7, temp: -25, label: '−25°C' },
+        { pos: 1,   temp: -30, label: '−30°C' }
+      ];
+
+      let scrollRaf = null;
+      window.addEventListener('scroll', () => {
+        if (scrollRaf) return;
+        scrollRaf = requestAnimationFrame(() => {
+          scrollRaf = null;
+          if (!tempFill || !tempReading) return;
+          const scrollFrac = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+          let i = 0;
+          for (; i < temps.length - 1; i++) {
+            if (scrollFrac < temps[i + 1].pos) break;
+          }
+          const t = temps[i];
+          const n = temps[Math.min(i + 1, temps.length - 1)];
+          const localFrac = n.pos === t.pos ? 0 : (scrollFrac - t.pos) / (n.pos - t.pos);
+          const currentTemp = Math.round(t.temp + (n.temp - t.temp) * localFrac);
+          const fillHeight = Math.max(5, ((currentTemp + 30) / 52) * 100);
+          tempFill.style.height = fillHeight + '%';
+          tempReading.textContent = (currentTemp >= 0 ? '+' : '−') + Math.abs(currentTemp) + '°C';
+          tempReading.style.color = currentTemp < 0 ? '#4a9aff' : '#7ec8e3';
+        });
+      }, { passive: true });
+
+      // ─── Service card hover → gauge reaction ───
+      document.querySelectorAll('.service-card').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+          if (!tempFill || !tempReading) return;
+          const t = parseInt(card.dataset.temp);
+          const fillHeight = Math.max(5, ((t + 30) / 52) * 100);
+          tempFill.style.height = fillHeight + '%';
+          tempReading.textContent = card.dataset.label;
+          tempReading.style.color = t < 0 ? '#4a9aff' : '#7ec8e3';
+        });
+      });
+    </script>
+  </body>
+</html>

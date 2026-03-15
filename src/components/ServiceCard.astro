@@ -1,0 +1,28 @@
+---
+// ServiceCard.astro — Individual service card with temp indicator
+interface Props {
+  title: string;
+  description: string;
+  icon: string;        // Inner SVG markup for viewBox="0 0 48 48"
+  temp: number;        // Used for gauge interaction via data-temp
+  tempLabel: string;   // e.g. "+2°C" — used for gauge display via data-label
+  tempBarWidth: string; // e.g. "70%" — width of the temp bar indicator
+  tempRange: string;   // e.g. "+2°C to +8°C" — displayed in card
+}
+
+const { title, description, icon, temp, tempLabel, tempBarWidth, tempRange } = Astro.props;
+---
+
+<div class="service-card" data-temp={temp} data-label={tempLabel}>
+  <div class="service-icon" aria-hidden="true">
+    <svg viewBox="0 0 48 48" focusable="false" set:html={icon}></svg>
+  </div>
+  <h3>{title}</h3>
+  <p>{description}</p>
+  <div class="service-temp">
+    <div class="bar">
+      <div class="bar-inner" style={`width:${tempBarWidth}`}></div>
+    </div>
+    {tempRange}
+  </div>
+</div>

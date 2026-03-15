@@ -1,0 +1,147 @@
+---
+// Nav.astro — Fixed navigation bar with theme toggle and menu panel
+import { menuGroups } from '../config/navigation';
+import { url } from '../config/site';
+---
+
+<nav aria-label="Primary">
+  <a href={url('/')} class="logo" aria-label="Mackay Refrigeration & Air-Conditioning — Home">
+    <svg viewBox="0 0 28 28" aria-hidden="true" focusable="false">
+      <path d="M14 2 L14 26 M8 6 L14 12 L20 6 M8 22 L14 16 L20 22 M2 14 L26 14 M6 8 L12 14 L6 20 M22 8 L16 14 L22 20" stroke="var(--frost)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <span>Mackay Refrigeration &amp; <span class="logo-aircon">Air-Conditioning<span class="dot">.</span></span></span>
+  </a>
+  <ul>
+    <li>
+      <a href="tel:0749531245" class="nav-phone-link" aria-label="Call 07 4953 1245">
+        <span class="nav-phone-text">07 4953 1245</span>
+        <svg class="nav-phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-5-5 19.79 19.79 0 01-3.07-8.67A2 2 0 015.07 3h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 18v2.92z"/>
+        </svg>
+      </a>
+    </li>
+    <li class="nav-phone-text"><a href={url('/contact')}>Contact</a></li>
+    <li>
+      <button class="theme-toggle" aria-label="Toggle light/dark mode">
+        <!-- Sun — visible in dark mode -->
+        <svg class="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+        <!-- Moon — visible in light mode -->
+        <svg class="theme-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+        </svg>
+      </button>
+    </li>
+    <li>
+      <button class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="menuPanel">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </li>
+  </ul>
+</nav>
+
+<!-- ── Menu overlay (z-index 190 — nav stays on top at z-index 200) ── -->
+<div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+  <div class="menu-scrim" id="menuScrim"></div>
+
+  <div class="menu-panel" id="menuPanel" role="dialog" aria-modal="true" aria-label="Site navigation">
+    <!-- Spacer matching nav height — hidden behind the fixed nav bar -->
+    <div class="menu-panel-top" aria-hidden="true"></div>
+
+    <!-- Panel header -->
+    <div class="menu-panel-header">
+      <span class="menu-panel-label">Menu</span>
+      <button class="menu-close" id="menuClose" aria-label="Close menu">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <path d="M2 2 L14 14 M14 2 L2 14"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Nav groups -->
+    <div class="menu-body">
+      {menuGroups.map(group => (
+        <div class="menu-group">
+          <div class="menu-group-label">{group.label}</div>
+          {group.items.map(item => (
+            <a href={url(item.href)} class="menu-item">
+              <div class="menu-item-label">{item.label}</div>
+              <div class="menu-item-desc">{item.description}</div>
+            </a>
+          ))}
+        </div>
+      ))}
+    </div>
+
+    <!-- Footer: always-visible phone link -->
+    <div class="menu-panel-footer">
+      <a href="tel:0749531245" class="menu-contact-link" aria-label="Call 07 4953 1245">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="15" height="15" aria-hidden="true" focusable="false">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-5-5 19.79 19.79 0 01-3.07-8.67A2 2 0 015.07 3h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L9.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 18v2.92z"/>
+        </svg>
+        <span>07 4953 1245</span>
+      </a>
+    </div>
+  </div>
+</div>
+
+<script is:inline>
+  // ─── Theme toggle ───
+  document.querySelectorAll('.theme-toggle').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const current = document.documentElement.getAttribute('data-theme') || 'dark';
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+    });
+  });
+
+  // ─── Menu panel ───
+  const menuBtn     = document.getElementById('menuBtn');
+  const menuOverlay = document.getElementById('menuOverlay');
+  const menuScrim   = document.getElementById('menuScrim');
+  const menuClose   = document.getElementById('menuClose');
+
+  function openMenu() {
+    menuOverlay.classList.add('open');
+    menuOverlay.setAttribute('aria-hidden', 'false');
+    menuBtn.classList.add('open');
+    menuBtn.setAttribute('aria-expanded', 'true');
+    menuBtn.setAttribute('aria-label', 'Close menu');
+    document.body.style.overflow = 'hidden';
+    menuClose.focus();
+  }
+
+  function closeMenu() {
+    menuOverlay.classList.remove('open');
+    menuOverlay.setAttribute('aria-hidden', 'true');
+    menuBtn.classList.remove('open');
+    menuBtn.setAttribute('aria-expanded', 'false');
+    menuBtn.setAttribute('aria-label', 'Open menu');
+    document.body.style.overflow = '';
+    menuBtn.focus();
+  }
+
+  menuBtn.addEventListener('click', function() {
+    if (menuOverlay.classList.contains('open')) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+
+  menuScrim.addEventListener('click', closeMenu);
+  menuClose.addEventListener('click', closeMenu);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeMenu();
+  });
+
+  document.querySelectorAll('.menu-item').forEach(function(link) {
+    link.addEventListener('click', closeMenu);
+  });
+</script>

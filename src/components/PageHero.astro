@@ -1,0 +1,19 @@
+---
+// PageHero.astro — Compact hero for interior pages
+interface Props {
+  badge: string;
+  title: string;   // Can include HTML like <span class="cold">
+  sub: string;
+}
+
+const { badge, title, sub } = Astro.props;
+---
+
+<div class="page-hero">
+  <div class="hero-badge">
+    <span class="pulse"></span>
+    {badge}
+  </div>
+  <h1 set:html={title}></h1>
+  <p class="hero-sub">{sub}</p>
+</div>

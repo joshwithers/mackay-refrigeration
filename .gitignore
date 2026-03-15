@@ -1,0 +1,33 @@
+# build output
+dist/
+
+# trashed legacy files (kept locally for reference)
+_trash/
+# generated types
+.astro/
+
+# dependencies
+node_modules/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# local Lighthouse reports
+lighthouse-*.json
+*-lh.json
+*-final-lh.json
+*-check-lh.json
+
+
+# environment variables
+.env
+.env.production
+
+# macOS-specific files
+.DS_Store
+
+# jetbrains setting folder
+.idea/

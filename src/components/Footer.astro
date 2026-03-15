@@ -1,0 +1,42 @@
+---
+// Footer.astro — Site footer with business details
+import { url } from "../config/site";
+---
+
+<footer class="site-footer">
+  <span>© 2026 Mackay Refrigeration &amp; Air-Conditioning</span>
+
+  <address class="footer-center">
+    <a href="tel:0749531245">07 4953 1245</a>
+    <a href="mailto:service@mackayrefrig.com.au">service@mackayrefrig.com.au</a>
+  </address>
+
+  <div class="footer-right">
+    <span>Mackay, Queensland</span>
+    <span>QBCC 15026021 · Arctick AU00021</span>
+    <a href={url("/ai")} class="footer-ai-link">For AI & Bots</a>
+  </div>
+</footer>
+
+<div class="dev-credit">
+  <p>
+    Another
+    <a href="https://unpopular.au" target="_blank" rel="noopener" class="dev-credit-word">
+      <span class="dev-credit-letters">
+        <span>U</span><span>n</span><span>p</span><span>o</span><span>p</span><span>u</span><span>l</span><span>a</span><span>r</span>
+      </span>
+    </a>
+    website on
+    <a href="https://theinternet.com.au" target="_blank" rel="noopener" class="dev-credit-word">
+      <span class="dev-credit-letters">
+        <span>T</span><span>h</span><span>e</span>&nbsp;<span>I</span><span>n</span><span>t</span><span>e</span><span>r</span><span>n</span><span>e</span><span>t</span>
+      </span>
+    </a>
+    by
+    <a href="https://joshwithers.au" target="_blank" rel="noopener" class="dev-credit-word">
+      <span class="dev-credit-letters">
+        <span>J</span><span>o</span><span>s</span><span>h</span>&nbsp;<span>W</span><span>i</span><span>t</span><span>h</span><span>e</span><span>r</span><span>s</span>
+      </span>
+    </a>
+  </p>
+</div>

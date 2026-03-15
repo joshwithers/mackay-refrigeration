@@ -1,0 +1,102 @@
+---
+import Base from "../layouts/Base.astro";
+import { getCollection } from "astro:content";
+import ReviewCard from "../components/ReviewCard.astro";
+import Footer from "../components/Footer.astro";
+import { fullUrl } from "../config/site";
+
+const reviewEntries = await getCollection("reviews");
+const sortedReviews = reviewEntries
+  .filter((r) => r.data && r.data.pubDate)
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const totalReviews = sortedReviews.length;
+const avgRating =
+  totalReviews > 0
+    ? Math.round(
+        (sortedReviews.reduce((sum, r) => sum + r.data.rating, 0) /
+          totalReviews) *
+          10
+      ) / 10
+    : 0;
+
+const aggregateSchema = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  "@id": `${fullUrl()}#business`,
+  name: "Mackay Refrigeration & Air-Conditioning",
+  aggregateRating: {
+    "@type": "AggregateRating",
+    ratingValue: avgRating,
+    reviewCount: totalReviews,
+    bestRating: 5,
+    worstRating: 1,
+  },
+  review: sortedReviews.map((r) => ({
+    "@type": "Review",
+    author: { "@type": "Person", name: r.data.name },
+    reviewRating: {
+      "@type": "Rating",
+      ratingValue: r.data.rating,
+      bestRating: 5,
+    },
+    datePublished: r.data.pubDate.toISOString().split("T")[0],
+    locationCreated: {
+      "@type": "Place",
+      address: r.data.address,
+    },
+  })),
+};
+
+const aggStars = Array.from({ length: 5 }, (_, i) => i < Math.round(avgRating));
+---
+
+<Base
+  title="Customer Reviews"
+  description="See what businesses across Mackay and North Queensland say about Mackay Refrigeration & Air-Conditioning."
+>
+  <Fragment slot="head">
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(aggregateSchema)} />
+  </Fragment>
+
+  <div class="page-hero">
+    <div class="hero-badge">
+      <span class="pulse"></span>
+      Reviews
+    </div>
+    <h1>What Our Customers Say</h1>
+    <p class="hero-sub">
+      Real feedback from businesses across Mackay and North Queensland.
+    </p>
+  </div>
+
+  {totalReviews > 0 && (
+    <div class="reviews-aggregate">
+      <div class="reviews-agg-score">{avgRating}</div>
+      <div class="reviews-agg-right">
+        <div
+          class="reviews-agg-stars"
+          role="img"
+          aria-label={`Average rating ${avgRating} out of 5`}
+        >
+          {aggStars.map((filled) => (
+            <svg viewBox="0 0 24 24" aria-hidden="true" class={filled ? "star-on" : "star-off"}>
+              <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+            </svg>
+          ))}
+        </div>
+        <div class="reviews-agg-label">
+          {avgRating} average · {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <div class="blog-section">
+    <div class="blog-grid">
+      {sortedReviews.map((review) => <ReviewCard review={review} />)}
+    </div>
+  </div>
+
+  <Footer />
+</Base>

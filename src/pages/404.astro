@@ -1,0 +1,420 @@
+---
+// 404.astro — Thermal overload. The antithesis of cold.
+---
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 — Thermal Overload</title>
+  <link rel="icon" href="/favicons/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/favicons/favicon.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="/favicons/apple-touch-icon.png">
+  <link rel="manifest" href="/favicons/site.webmanifest">
+</head>
+<body>
+
+<style is:global>
+  :root {
+    --bg:          #110704;
+    --bg-mid:      #1d0c07;
+    --line:        #4a1a08;
+    --flame:       #ff4a1a;
+    --flame-bright:#ff8040;
+    --flame-dim:   rgba(255, 74, 26, 0.25);
+    --flame-glow:  rgba(255, 74, 26, 0.14);
+    --hot-white:   #f5e8e0;
+    --hot-dim:     #a07060;
+    --yellow:      #ffb020;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) var(--bg);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--hot-white);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ─── HOT GRID ─── */
+  .hot-grid {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      linear-gradient(var(--line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.18;
+    pointer-events: none;
+  }
+
+  /* ─── HEAT HAZE LAYER ─── */
+  .heat-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .heat-blob {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(ellipse, var(--flame-glow), transparent 70%);
+    filter: blur(80px);
+    opacity: 0;
+    animation: heat-rise linear infinite;
+  }
+  .heat-blob:nth-child(1) { width: 600px; height: 280px; left:  5%; bottom: -100px; animation-duration:  9s; animation-delay:   0s; }
+  .heat-blob:nth-child(2) { width: 400px; height: 240px; right: 10%; bottom: -100px; animation-duration: 12s; animation-delay:  -3s; }
+  .heat-blob:nth-child(3) { width: 500px; height: 200px; left:  40%; bottom: -100px; animation-duration:  8s; animation-delay:  -6s; }
+  .heat-blob:nth-child(4) { width: 350px; height: 260px; left:  20%; bottom: -100px; animation-duration: 14s; animation-delay:  -2s; }
+
+  @keyframes heat-rise {
+    0%   { opacity: 0;   transform: translateY(0)      scale(0.8); }
+    15%  { opacity: 0.7; }
+    75%  { opacity: 0.3; }
+    100% { opacity: 0;   transform: translateY(-700px) scale(1.5); }
+  }
+
+  /* ─── HEAT WAVE SVG (bottom of screen) ─── */
+  .heat-overlay {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 280px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .heat-wave {
+    fill: none;
+    stroke: var(--flame);
+    stroke-width: 1;
+    stroke-linecap: round;
+    opacity: 0;
+  }
+  .heat-wave-1 { stroke-dasharray: 1200; stroke-dashoffset: 1200; animation: draw-wave 3s ease 0.4s forwards; opacity: 0.22; }
+  .heat-wave-2 { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw-wave 2.5s ease 0.8s forwards; opacity: 0.14; }
+  .heat-wave-3 { stroke-dasharray: 900;  stroke-dashoffset:  900; animation: draw-wave 2s ease 1.2s forwards; opacity: 0.09; }
+
+  @keyframes draw-wave { to { stroke-dashoffset: 0; } }
+
+  /* ─── MAIN LAYOUT ─── */
+  .err-page {
+    position: relative;
+    z-index: 10;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 80px 60px;
+  }
+
+  /* ─── BADGE ─── */
+  .err-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--flame);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0;
+    animation: fade-up 0.6s ease 0.2s forwards;
+  }
+  .hot-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--flame);
+    animation: hot-pulse 1.4s ease infinite;
+  }
+  @keyframes hot-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 74, 26, 0.7); }
+    50%       { box-shadow: 0 0 0 7px rgba(255, 74, 26, 0); }
+  }
+
+  /* ─── 404 ─── */
+  .err-number {
+    font-size: clamp(120px, 18vw, 220px);
+    font-weight: 700;
+    line-height: 0.85;
+    letter-spacing: -0.05em;
+    color: var(--flame);
+    text-shadow:
+      0 0 40px  rgba(255, 74, 26, 0.9),
+      0 0 80px  rgba(255, 74, 26, 0.5),
+      0 0 160px rgba(255, 74, 26, 0.25);
+    display: block;
+    margin-bottom: 36px;
+    opacity: 0;
+    animation: shimmer 3s ease infinite, fade-up 0.8s ease 0.4s forwards;
+  }
+  @keyframes shimmer {
+    0%, 100% {
+      text-shadow:
+        0 0 40px  rgba(255, 74, 26, 0.9),
+        0 0 80px  rgba(255, 74, 26, 0.5),
+        0 0 160px rgba(255, 74, 26, 0.25);
+      filter: blur(0px);
+    }
+    50% {
+      text-shadow:
+        0 0 60px  rgba(255, 100, 20, 1),
+        0 0 120px rgba(255, 74, 26, 0.7),
+        0 0 220px rgba(255, 74, 26, 0.35);
+      filter: blur(0.4px);
+    }
+  }
+
+  /* ─── HEADING ─── */
+  .err-heading {
+    font-size: clamp(22px, 2.8vw, 38px);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    margin-bottom: 20px;
+    opacity: 0;
+    animation: fade-up 0.7s ease 0.7s forwards;
+  }
+
+  /* ─── SUBTEXT ─── */
+  .err-sub {
+    font-size: 17px;
+    color: var(--hot-dim);
+    max-width: 460px;
+    line-height: 1.8;
+    margin-bottom: 40px;
+    opacity: 0;
+    animation: fade-up 0.7s ease 0.9s forwards;
+  }
+
+  /* ─── BACK LINK ─── */
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hot-white);
+    text-decoration: none;
+    padding: 14px 28px;
+    border: 1px solid var(--flame);
+    position: relative;
+    overflow: hidden;
+    transition: color 0.4s ease;
+    opacity: 0;
+    animation: fade-up 0.7s ease 1.1s forwards;
+  }
+  .back-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--flame);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: -1;
+  }
+  .back-link:hover::before { transform: scaleX(1); }
+  .back-link:hover { color: var(--bg); }
+  .back-link svg {
+    width: 16px; height: 16px;
+    stroke: currentColor; fill: none; stroke-width: 2;
+    transition: transform 0.3s ease;
+  }
+  .back-link:hover svg { transform: translateX(4px); }
+
+  /* ─── THERMOMETER ─── */
+  .therm-unit {
+    position: absolute;
+    right: 80px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 140px;
+    height: 440px;
+    opacity: 0;
+    animation: fade-up 1s ease 1.4s forwards;
+  }
+  .therm-svg { width: 100%; height: 100%; overflow: visible; }
+
+  .therm-tube-bg    { fill: none; stroke: var(--line); stroke-width: 2; }
+  .therm-tick       { stroke: var(--line); stroke-width: 0.8; }
+  .therm-label-text { font-family: 'DM Mono', monospace; font-size: 9px; fill: var(--hot-dim); }
+  .therm-critical   { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.2em; fill: var(--flame); }
+  .therm-reading    { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; fill: var(--flame); animation: pulse-opacity 1.8s ease infinite; }
+
+  @keyframes pulse-opacity {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.6; }
+  }
+
+  /* ─── SHARED ─── */
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+    .heat-blob { display: none; }
+  }
+
+  @media (max-width: 900px) {
+    .err-page { padding: 80px 28px 60px; }
+    .therm-unit { display: none; }
+    .heat-overlay { display: none; }
+  }
+</style>
+
+<div class="hot-grid"></div>
+
+<div class="heat-layer">
+  <div class="heat-blob"></div>
+  <div class="heat-blob"></div>
+  <div class="heat-blob"></div>
+  <div class="heat-blob"></div>
+</div>
+
+<!-- Heat waves rising from the floor -->
+<svg class="heat-overlay" viewBox="0 0 1440 280" preserveAspectRatio="none">
+  <path class="heat-wave heat-wave-1" d="M0,180 Q180,155 360,175 T720,160 T1080,172 T1440,158"/>
+  <path class="heat-wave heat-wave-2" d="M0,210 Q200,190 400,212 T800,195 T1200,208 T1440,192"/>
+  <path class="heat-wave heat-wave-3" d="M0,240 Q220,225 440,242 T880,228 T1320,240 T1440,226"/>
+</svg>
+
+<div class="err-page">
+
+  <div class="err-badge">
+    <span class="hot-dot"></span>
+    ERR — 01 — Thermal Overload
+  </div>
+
+  <span class="err-number">404</span>
+
+  <h1 class="err-heading">Things are getting too hot.</h1>
+
+  <p class="err-sub">
+    We couldn't find the page you were looking for. Whatever it was,
+    it's gone — possibly vaporised. The system is running hot and
+    this URL is coming up empty. Maybe it melted.
+  </p>
+
+  <a href="/" class="back-link">
+    Return to safety
+    <svg viewBox="0 0 16 16"><path d="M3 8 L13 8 M9 4 L13 8 L9 12"/></svg>
+  </a>
+
+  <!-- Overheating thermometer — mercury well past maximum -->
+  <div class="therm-unit">
+    <svg class="therm-svg" viewBox="0 0 140 440" overflow="visible">
+      <defs>
+        <linearGradient id="mercuryGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#ff2200"/>
+          <stop offset="40%"  stop-color="#ff5520"/>
+          <stop offset="100%" stop-color="#ff9040"/>
+        </linearGradient>
+        <filter id="heatGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="5" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+
+      <!-- Scale ticks (right of tube) -->
+      <line class="therm-tick" x1="78" y1="60"  x2="88" y2="60"/>
+      <line class="therm-tick" x1="80" y1="100" x2="88" y2="100"/>
+      <line class="therm-tick" x1="80" y1="140" x2="88" y2="140"/>
+      <line class="therm-tick" x1="78" y1="180" x2="88" y2="180"/>
+      <line class="therm-tick" x1="80" y1="220" x2="88" y2="220"/>
+      <line class="therm-tick" x1="80" y1="260" x2="88" y2="260"/>
+      <line class="therm-tick" x1="78" y1="300" x2="88" y2="300"/>
+      <line class="therm-tick" x1="80" y1="340" x2="88" y2="340"/>
+
+      <!-- Scale labels (left of tube) -->
+      <text class="therm-label-text" x="68" y="64"  text-anchor="end">60</text>
+      <text class="therm-label-text" x="68" y="184" text-anchor="end">30</text>
+      <text class="therm-label-text" x="68" y="304" text-anchor="end">0</text>
+      <text class="therm-label-text" x="68" y="344" text-anchor="end">−10</text>
+
+      <!-- Tube outline -->
+      <rect class="therm-tube-bg" x="70" y="55" width="18" height="310" rx="9"/>
+
+      <!-- Mercury fill — past maximum, overflowing -->
+      <rect x="73" y="30" width="12" height="360" rx="6" fill="url(#mercuryGrad)" opacity="0.95"/>
+
+      <!-- Bulb at bottom -->
+      <circle cx="79" cy="390" r="26" fill="url(#mercuryGrad)" opacity="0.95"/>
+      <circle cx="79" cy="390" r="26" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+
+      <!-- Overflow blob erupting from the top -->
+      <circle cx="79" cy="28" r="16" fill="#ff3300" filter="url(#heatGlow)" opacity="0.9"/>
+
+      <!-- Drips escaping from the overflow -->
+      <ellipse cx="79" cy="44" rx="4" ry="7" fill="#ff6030">
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0; 0,55" dur="1.9s" begin="2s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;0.9;0.7;0" dur="1.9s" begin="2s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="70" cy="38" rx="3" ry="5" fill="#ff5020">
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0; -4,65" dur="2.3s" begin="2.4s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;0.8;0.5;0" dur="2.3s" begin="2.4s" repeatCount="indefinite"/>
+      </ellipse>
+      <ellipse cx="88" cy="40" rx="3" ry="5" fill="#ff5020">
+        <animateTransform attributeName="transform" type="translate"
+          values="0,0; 4,60" dur="2.1s" begin="2.7s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0;0.8;0.5;0" dur="2.1s" begin="2.7s" repeatCount="indefinite"/>
+      </ellipse>
+
+      <!-- MAX danger line -->
+      <line x1="70" y1="60" x2="88" y2="60"
+        stroke="#ff4a1a" stroke-width="1.5" stroke-dasharray="3 2" opacity="0.7"/>
+      <text class="therm-label-text" x="92" y="64" fill="#ff4a1a" font-size="8">MAX</text>
+
+      <!-- Heat shimmer wisps above overflow -->
+      <path d="M65,8 Q79,0 93,8"
+        stroke="#ff8040" stroke-width="0.8" fill="none" opacity="0"
+        stroke-dasharray="40" stroke-dashoffset="40">
+        <animate attributeName="stroke-dashoffset" values="40;0" dur="1.5s" begin="2s" fill="freeze"/>
+        <animate attributeName="opacity" values="0;0.4;0" dur="3s" begin="2s" repeatCount="indefinite"/>
+      </path>
+      <path d="M62,-6 Q79,-16 96,-6"
+        stroke="#ff8040" stroke-width="0.6" fill="none" opacity="0"
+        stroke-dasharray="50" stroke-dashoffset="50">
+        <animate attributeName="stroke-dashoffset" values="50;0" dur="1.8s" begin="2.3s" fill="freeze"/>
+        <animate attributeName="opacity" values="0;0.25;0" dur="3.5s" begin="2.3s" repeatCount="indefinite"/>
+      </path>
+
+      <!-- CRITICAL label -->
+      <text class="therm-critical" x="79" y="12" text-anchor="middle">CRITICAL</text>
+
+      <!-- Live temperature reading -->
+      <text class="therm-reading" x="100" y="36" text-anchor="start">+56°C</text>
+    </svg>
+  </div>
+
+</div>
+
+</body>
+</html>

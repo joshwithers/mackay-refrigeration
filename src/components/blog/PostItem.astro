@@ -1,0 +1,58 @@
+---
+import { Image } from "astro:assets";
+import { type CollectionEntry, render } from "astro:content";
+import { url } from "../../config/site";
+
+export interface Props {
+  post: CollectionEntry<"blog">;
+}
+
+const { post } = Astro.props;
+const { remarkPluginFrontmatter } = await render(post);
+
+const readingTime = remarkPluginFrontmatter?.minutesRead
+  ? `${Math.ceil(remarkPluginFrontmatter.minutesRead)} min read`
+  : "";
+
+const formattedDate = post.data.pubDate.toLocaleDateString("en-AU", {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+const href = url(`/blog/${post.id}`);
+---
+
+<article class="post-card">
+  {post.data.image && (
+    <div class="post-card-image">
+      <a href={href} aria-label={`Read ${post.data.title}`}>
+        <Image
+          src={post.data.image}
+          alt={post.data.title}
+          widths={[320, 480, 640]}
+          sizes="(max-width: 900px) 100vw, 33vw"
+          quality={60}
+          loading="lazy"
+          decoding="async"
+        />
+      </a>
+    </div>
+  )}
+  <div class="post-card-body">
+    <div class="post-card-meta">
+      <time datetime={post.data.pubDate.toISOString()}>{formattedDate}</time>
+      {readingTime && <span class="meta-sep" aria-hidden="true">/</span>}
+      {readingTime && <span>{readingTime}</span>}
+    </div>
+
+    <a href={href} class="post-card-title">
+      {post.data.title}
+    </a>
+
+    {post.data.description && (
+      <p class="post-card-desc">{post.data.description}</p>
+    )}
+  </div>
+</article>

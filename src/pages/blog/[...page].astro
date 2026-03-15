@@ -1,0 +1,61 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getCollection } from "astro:content";
+import PostItem from "../../components/blog/PostItem.astro";
+import Footer from "../../components/Footer.astro";
+import type { GetStaticPathsOptions } from "astro";
+
+export async function getStaticPaths({ paginate }: GetStaticPathsOptions) {
+  const blogEntries = await getCollection("blog");
+  const sortedPosts = blogEntries
+    .filter((post) => post.data && post.data.pubDate)
+    .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+  return paginate(sortedPosts, { pageSize: 6 });
+}
+
+const { page } = Astro.props;
+const blog = page.data;
+const { prev, next } = page.url;
+---
+
+<Base title="Blog" description="News, articles, blog posts, and updates from Mackay Refrigeration and Airconditioning and our team in Mackay and the Whitsundays, Queensland.">
+  <div class="page-hero">
+    <div class="hero-badge">
+      <span class="pulse"></span>
+      Latest
+    </div>
+    <h1>Blog</h1>
+    <p class="hero-sub">News, tips and updates from the team at Mackay Refrigeration.</p>
+  </div>
+
+  <div class="blog-section">
+    <div class="blog-grid">
+      {blog.map((post) => <PostItem post={post} />)}
+    </div>
+
+    {(prev || next) && (
+      <div class="blog-pagination">
+        {prev ? (
+          <a href={prev} class="blog-pagination-link prev">
+            <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+            Newer
+          </a>
+        ) : <span class="blog-pagination-placeholder" />}
+
+        <span class="blog-pagination-info">
+          Page {page.currentPage} of {page.lastPage}
+        </span>
+
+        {next ? (
+          <a href={next} class="blog-pagination-link next">
+            Older
+            <svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>
+          </a>
+        ) : <span class="blog-pagination-placeholder" />}
+      </div>
+    )}
+  </div>
+
+  <Footer />
+</Base>

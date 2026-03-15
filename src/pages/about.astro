@@ -1,0 +1,115 @@
+---
+import Base from '../layouts/Base.astro';
+import CTA from '../components/CTA.astro';
+import Footer from '../components/Footer.astro';
+import { url } from '../config/site';
+---
+
+<Base
+  title="About"
+  description="Mackay Refrigeration & Air-Conditioning has been keeping commercial refrigeration and HVAC running across Mackay and North Queensland for over 25 years."
+>
+
+  <!-- ── Page layout header ── -->
+  <div class="page-layout-header">
+    <div class="hero-badge">
+      <span class="pulse"></span>
+      About us
+    </div>
+    <h1>Built on<br /><span class="cold">cold expertise</span></h1>
+    <p class="hero-sub">
+      We've been keeping refrigeration and air conditioning running across Mackay
+      and North Queensland for over 25 years. One crew. Full scope. No subcontractors.
+    </p>
+  </div>
+
+  <!-- ── Page body ── -->
+  <div class="page-body">
+    <div class="md-content">
+
+      <p>
+        Mackay Refrigeration Pty Ltd (trading as Mackay Refrigeration and Air-Conditioning)
+        was established to fill a gap in the Mackay commercial market — a contractor who
+        could handle the full scope of refrigeration and HVAC work under one roof, with
+        properly licensed technicians and no hand-offs to other trades.
+      </p>
+
+      <h2>What we do</h2>
+      <p>
+        We design, supply, install, commission, and maintain commercial refrigeration
+        and air conditioning systems. That means cold rooms, freezer rooms, display
+        cabinets, beer reticulation, commercial split systems, ducted HVAC — from
+        initial brief to ongoing service contract.
+      </p>
+      <p>
+        Our technicians hold current Arctick licences for refrigerant handling and our
+        business is licenced with the QBCC. All work is documented and compliant.
+      </p>
+
+      <h2>Where we operate</h2>
+      <p>
+        Our base is Mackay, and we regularly service Airlie Beach, Cannonvale, Bowen,
+        and Moranbah. For the right project, we'll go further — give us a call and we
+        can work out logistics.
+      </p>
+
+      <h3>Service area</h3>
+      <ul>
+        <li>Mackay (all suburbs)</li>
+        <li>Airlie Beach &amp; Cannonvale</li>
+        <li>Bowen</li>
+        <li>Moranbah</li>
+        <li>North Queensland (on request)</li>
+      </ul>
+
+      <h2>Emergency response</h2>
+      <p>
+        Cold chain failures don't keep business hours. We provide 24/7 emergency response
+        for existing clients and new customers across our service area. If your compressor
+        goes down or you've got a refrigerant leak, call us directly on
+        <a href="tel:0749531245">07 4953 1245</a>.
+      </p>
+
+      <h2>Licences &amp; registrations</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Licence / Registration</th>
+            <th>Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>QBCC Contractor Licence</td>
+            <td>15026021</td>
+          </tr>
+          <tr>
+            <td>Arctick (refrigerant handling)</td>
+            <td>AU00021</td>
+          </tr>
+          <tr>
+            <td>ABN</td>
+            <td>32 107 715 766</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <blockquote>
+        "If it runs on refrigerant or moves air commercially, we can install it,
+        service it, and keep it running."
+      </blockquote>
+
+      <h2>Get in touch</h2>
+      <p>
+        Ready to discuss a project or set up a service contract?
+        <a href={url('/contact')}>Send us a message</a> or call <a href="tel:0749531245">07 4953 1245</a>
+        during business hours (Mon–Thu 7:30–4:30, Fri 7:30–2:00).
+      </p>
+
+    </div>
+  </div>
+
+  <CTA />
+  <Footer />
+</Base>

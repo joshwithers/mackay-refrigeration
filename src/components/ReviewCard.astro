@@ -1,0 +1,88 @@
+---
+import { type CollectionEntry, render } from "astro:content";
+
+export interface Props {
+  review: CollectionEntry<"reviews">;
+}
+
+const { review } = Astro.props;
+const { Content } = await render(review);
+
+const stars = Array.from({ length: 5 }, (_, i) => i < review.data.rating);
+
+const initials = review.data.name
+  .split(" ")
+  .map((n: string) => n[0])
+  .join("")
+  .slice(0, 2)
+  .toUpperCase();
+
+
+const websiteDisplay = review.data.website
+  ? review.data.website.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")
+  : null;
+---
+
+<article class="review-card">
+  <div class="review-header">
+    {review.data.photo ? (
+      <img
+        class="review-avatar"
+        src={review.data.photo}
+        alt={review.data.name}
+        width="48"
+        height="48"
+      />
+    ) : (
+      <div class="review-avatar review-avatar-initials" aria-hidden="true">
+        {initials}
+      </div>
+    )}
+
+    <div class="review-header-text">
+      <span class="review-name">{review.data.name}</span>
+      <div
+        class="review-stars"
+        role="img"
+        aria-label={`${review.data.rating} out of 5 stars`}
+      >
+        {stars.map((filled) => (
+          <svg viewBox="0 0 24 24" aria-hidden="true" class={filled ? "star-on" : "star-off"}>
+            <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
+          </svg>
+        ))}
+      </div>
+    </div>
+
+  </div>
+
+  <div class="review-body">
+    <Content />
+  </div>
+
+  <div class="review-footer">
+    <div class="review-location">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+        <circle cx="12" cy="10" r="3" />
+      </svg>
+      <span>{review.data.address}</span>
+    </div>
+
+    {review.data.website && (
+      <a
+        href={review.data.website}
+        class="review-website"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Visit ${review.data.name} website`}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <span>{websiteDisplay}</span>
+      </a>
+    )}
+  </div>
+</article>

@@ -1,0 +1,72 @@
+---
+// ServicesGrid.astro — 3×2 grid of service cards
+import ServiceCard from './ServiceCard.astro';
+
+const services = [
+  {
+    title: 'Cool & Freezer Rooms',
+    description: 'Custom-built cool rooms and freezer rooms for hospitality, retail, and primary producers. Sized and specced to your operation, from small coolrooms to large walk-in freezers.',
+    icon: '<rect x="8" y="6" width="32" height="36" rx="3"/><line x1="8" y1="18" x2="40" y2="18"/><line x1="8" y1="30" x2="40" y2="30"/><circle cx="24" cy="12" r="3"/>',
+    temp: -2,
+    tempLabel: '+2°C',
+    tempBarWidth: '70%',
+    tempRange: '+2°C to −30°C',
+  },
+  {
+    title: 'Commercial Refrigeration',
+    description: 'Full supply, installation, and maintenance of commercial refrigeration systems. Display cabinets, under-bench units, back-bar coolers, and multi-deck cases.',
+    icon: '<path d="M24 4 L24 44 M16 10 L24 18 L32 10 M16 38 L24 30 L32 38 M4 24 L44 24 M10 16 L18 24 L10 32 M38 16 L30 24 L38 32"/>',
+    temp: -10,
+    tempLabel: '−10°C',
+    tempBarWidth: '45%',
+    tempRange: '+1°C to −30°C',
+  },
+  {
+    title: 'Commercial Air Conditioning',
+    description: 'Supply, installation, and maintenance of commercial air conditioning. Split systems, ducted units, multi-head systems, and VRF for offices, retail, and industrial spaces.',
+    icon: '<rect x="6" y="14" width="36" height="20" rx="3"/><path d="M12 8 L12 14 M24 8 L24 14 M36 8 L36 14"/><path d="M10 28 Q16 24 22 28 Q28 32 34 28 Q38 26 40 24"/>',
+    temp: 22,
+    tempLabel: '+22°C',
+    tempBarWidth: '95%',
+    tempRange: 'Cooling & heating',
+  },
+  {
+    title: 'Beer & Post Mix Systems',
+    description: 'Reticulation systems, beer gas lines, and post mix equipment. Kept perfectly chilled and flowing for hospitality venues across the region.',
+    icon: '<rect x="14" y="4" width="20" height="28" rx="4"/><path d="M18 32 L16 44 M30 32 L32 44"/><line x1="10" y1="44" x2="38" y2="44"/><path d="M34 14 L38 14 Q42 14 42 18 L42 24 Q42 28 38 28 L34 28"/>',
+    temp: 2,
+    tempLabel: '+2°C',
+    tempBarWidth: '68%',
+    tempRange: '+1°C to +4°C',
+  },
+  {
+    title: 'Preventive Maintenance',
+    description: 'Scheduled servicing for refrigeration and air conditioning systems. Refrigerant checks, coil cleaning, seal testing, and compliance certifications — QBCC and Arctick licensed.',
+    icon: '<circle cx="24" cy="24" r="16"/><path d="M24 12 L24 24 L32 28"/><circle cx="24" cy="24" r="3"/>',
+    temp: 0,
+    tempLabel: '0°C',
+    tempBarWidth: '50%',
+    tempRange: 'All systems',
+  },
+  {
+    title: 'Emergency Repairs',
+    description: 'Compressor failures, gas leaks, electrical faults — fast response to protect your stock and your business. Servicing Mackay, Airlie Beach, Bowen, and Moranbah.',
+    icon: '<path d="M12 40 L12 16 Q12 8 24 8 Q36 8 36 16 L36 40"/><line x1="8" y1="40" x2="40" y2="40"/><circle cx="24" cy="28" r="6"/><line x1="24" y1="22" x2="24" y2="16"/>',
+    temp: 15,
+    tempLabel: '+15°C',
+    tempBarWidth: '85%',
+    tempRange: 'Critical response',
+  },
+];
+---
+
+<section class="section" id="services">
+  <div class="reveal">
+    <div class="section-label">01 — Services</div>
+    <h2 class="section-title">Refrigeration and air conditioning, done right</h2>
+  </div>
+
+  <div class="services-grid reveal">
+    {services.map((s) => <ServiceCard {...s} />)}
+  </div>
+</section>

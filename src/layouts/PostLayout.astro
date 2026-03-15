@@ -1,0 +1,144 @@
+---
+// PostLayout.astro — Blog post layout using refrigeration theme
+import { Image } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import Nav from "../components/Nav.astro";
+import { url, defaultTheme } from "../config/site";
+import TempGauge from "../components/TempGauge.astro";
+import Footer from "../components/Footer.astro";
+import Seo from "../components/seo/Seo.astro";
+import "../styles/global.css";
+
+interface Props {
+  title: string;
+  description?: string;
+  pubDate?: Date;
+  image?: ImageMetadata;
+  youtube?: string;
+  readingTime?: string;
+}
+
+const { title, description, pubDate, image, youtube, readingTime } = Astro.props;
+
+const formattedDate = pubDate
+  ? pubDate.toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" })
+  : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <Seo title={title} description={description} ogImage={image} />
+    <slot name="head" />
+    <script is:inline define:vars={{ defaultTheme }}>
+      (function() {
+        const stored = typeof localStorage !== 'undefined' && localStorage.getItem('theme');
+        document.documentElement.setAttribute('data-theme', stored || defaultTheme);
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <div class="grid-bg" aria-hidden="true"></div>
+    <div class="vapour-layer" aria-hidden="true">
+      <div class="vapour-blob"></div>
+      <div class="vapour-blob"></div>
+      <div class="vapour-blob"></div>
+    </div>
+
+    <TempGauge />
+    <Nav />
+
+    <main id="main-content" class="content">
+      <header class="post-header">
+        <a href={url('/blog')} class="post-back">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"/></svg>
+          Blog
+        </a>
+        <div class="post-meta">
+          {formattedDate && <time datetime={pubDate?.toISOString()}>{formattedDate}</time>}
+          {formattedDate && readingTime && <span class="meta-sep" aria-hidden="true">/</span>}
+          {readingTime && <span>{readingTime}</span>}
+        </div>
+        <h1>{title}</h1>
+        {description && <p class="post-description">{description}</p>}
+      </header>
+
+      {youtube ? (
+        <div class="post-video-wrap">
+          <iframe
+            class="post-video"
+            src={`https://www.youtube-nocookie.com/embed/${youtube}`}
+            title={title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen
+            loading="lazy"
+          ></iframe>
+        </div>
+      ) : image && (
+        <div class="post-hero-media">
+          <Image
+            src={image}
+            alt={title}
+            class="post-hero-image"
+            widths={[480, 720, 840, 1080]}
+            sizes="(max-width: 900px) 100vw, 860px"
+            quality={60}
+            loading="eager"
+            decoding="async"
+            fetchpriority="high"
+          />
+        </div>
+      )}
+
+      <article class="post-body">
+        <div class="md-content">
+          <slot />
+        </div>
+      </article>
+
+      <Footer />
+    </main>
+
+    <script is:inline>
+      const reveals = document.querySelectorAll('.reveal');
+      const revealObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+      }, { threshold: 0.15 });
+      reveals.forEach(el => revealObserver.observe(el));
+
+      const tempFill = document.getElementById('tempFill');
+      const tempReading = document.getElementById('tempReading');
+      const temps = [
+        { pos: 0,   temp: 22,  label: '+22°C' },
+        { pos: 0.3, temp: 2,   label: '+2°C'  },
+        { pos: 0.5, temp: -10, label: '−10°C' },
+        { pos: 0.7, temp: -25, label: '−25°C' },
+        { pos: 1,   temp: -30, label: '−30°C' }
+      ];
+      let scrollRaf = null;
+      window.addEventListener('scroll', () => {
+        if (scrollRaf) return;
+        scrollRaf = requestAnimationFrame(() => {
+          scrollRaf = null;
+          if (!tempFill || !tempReading) return;
+          const scrollFrac = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+          let i = 0;
+          for (; i < temps.length - 1; i++) {
+            if (scrollFrac < temps[i + 1].pos) break;
+          }
+          const t = temps[i];
+          const n = temps[Math.min(i + 1, temps.length - 1)];
+          const localFrac = n.pos === t.pos ? 0 : (scrollFrac - t.pos) / (n.pos - t.pos);
+          const currentTemp = Math.round(t.temp + (n.temp - t.temp) * localFrac);
+          const fillHeight = Math.max(5, ((currentTemp + 30) / 52) * 100);
+          tempFill.style.height = fillHeight + '%';
+          tempReading.textContent = (currentTemp >= 0 ? '+' : '−') + Math.abs(currentTemp) + '°C';
+          tempReading.style.color = currentTemp < 0 ? '#4a9aff' : '#7ec8e3';
+        });
+      }, { passive: true });
+    </script>
+  </body>
+</html>
