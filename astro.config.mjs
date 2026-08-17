@@ -41,10 +41,13 @@ export default defineConfig({
                 const src = escape(img.url);
                 const alt = escape(img.alt);
                 const title = img.title ? ` title="${escape(img.title)}"` : "";
+                const dimensions = {
+                  "/images/compressor.jpg": ' width="862" height="575"',
+                }[src] || "";
                 const caption = alt ? `<figcaption>${alt}</figcaption>` : "";
                 return {
                   type: "html",
-                  value: `<figure class="post-figure"><img src="${src}" alt="${alt}"${title}>${caption}</figure>`,
+                  value: `<figure class="post-figure"><img src="${src}" alt="${alt}"${title}${dimensions}>${caption}</figure>`,
                 };
               }
               return node;

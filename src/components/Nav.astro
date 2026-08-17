@@ -45,7 +45,7 @@ import { url } from '../config/site';
 </nav>
 
 <!-- ── Menu overlay (z-index 190 — nav stays on top at z-index 200) ── -->
-<div class="menu-overlay" id="menuOverlay" aria-hidden="true">
+<div class="menu-overlay" id="menuOverlay" aria-hidden="true" inert>
   <div class="menu-scrim" id="menuScrim"></div>
 
   <div class="menu-panel" id="menuPanel" role="dialog" aria-modal="true" aria-label="Site navigation">
@@ -105,8 +105,10 @@ import { url } from '../config/site';
   const menuOverlay = document.getElementById('menuOverlay');
   const menuScrim   = document.getElementById('menuScrim');
   const menuClose   = document.getElementById('menuClose');
+  const menuFocusables = menuOverlay.querySelectorAll('a[href], button:not([disabled])');
 
   function openMenu() {
+    menuOverlay.inert = false;
     menuOverlay.classList.add('open');
     menuOverlay.setAttribute('aria-hidden', 'false');
     menuBtn.classList.add('open');
@@ -119,6 +121,7 @@ import { url } from '../config/site';
   function closeMenu() {
     menuOverlay.classList.remove('open');
     menuOverlay.setAttribute('aria-hidden', 'true');
+    menuOverlay.inert = true;
     menuBtn.classList.remove('open');
     menuBtn.setAttribute('aria-expanded', 'false');
     menuBtn.setAttribute('aria-label', 'Open menu');
@@ -138,7 +141,25 @@ import { url } from '../config/site';
   menuClose.addEventListener('click', closeMenu);
 
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeMenu();
+    if (!menuOverlay.classList.contains('open')) return;
+
+    if (e.key === 'Escape') {
+      closeMenu();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const first = menuFocusables[0];
+      const last = menuFocusables[menuFocusables.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
   });
 
   document.querySelectorAll('.menu-item').forEach(function(link) {

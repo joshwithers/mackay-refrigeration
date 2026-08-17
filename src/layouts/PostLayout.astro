@@ -65,15 +65,39 @@ const formattedDate = pubDate
       </header>
 
       {youtube ? (
-        <div class="post-video-wrap">
-          <iframe
-            class="post-video"
-            src={`https://www.youtube-nocookie.com/embed/${youtube}`}
-            title={title}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowfullscreen
-            loading="lazy"
-          ></iframe>
+        <div class="post-video-wrap" data-video-wrap>
+          <button
+            class="post-video-facade"
+            type="button"
+            data-youtube-id={youtube}
+            data-video-title={title}
+            aria-label={`Play video: ${title}`}
+          >
+            {image && (
+              <Image
+                src={image}
+                alt=""
+                class="post-video-poster"
+                widths={[480, 720, 960, 1280]}
+                sizes="100vw"
+                quality={60}
+                loading="eager"
+                decoding="async"
+                fetchpriority="high"
+              />
+            )}
+            <span class="post-video-play" aria-hidden="true">
+              <span class="post-video-play-icon">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M9 7l8 5-8 5V7z"/></svg>
+              </span>
+              <span>Play video</span>
+            </span>
+          </button>
+          <noscript>
+            <a class="post-video-noscript" href={`https://www.youtube.com/watch?v=${youtube}`}>
+              Watch {title} on YouTube
+            </a>
+          </noscript>
         </div>
       ) : image && (
         <div class="post-hero-media">
@@ -108,6 +132,24 @@ const formattedDate = pubDate
         });
       }, { threshold: 0.15 });
       reveals.forEach(el => revealObserver.observe(el));
+
+      document.querySelectorAll('.post-video-facade').forEach(button => {
+        button.addEventListener('click', () => {
+          const videoId = button.dataset.youtubeId;
+          const videoTitle = button.dataset.videoTitle;
+          const wrapper = button.closest('[data-video-wrap]');
+          if (!videoId || !videoTitle || !wrapper) return;
+
+          const iframe = document.createElement('iframe');
+          iframe.className = 'post-video';
+          iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}?autoplay=1`;
+          iframe.title = videoTitle;
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+          iframe.allowFullscreen = true;
+          wrapper.replaceChildren(iframe);
+          iframe.focus();
+        });
+      });
 
       const tempFill = document.getElementById('tempFill');
       const tempReading = document.getElementById('tempReading');
