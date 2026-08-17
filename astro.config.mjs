@@ -1,15 +1,30 @@
 import { defineConfig } from "astro/config";
+import cloudflare from "@astrojs/cloudflare";
 import { unified } from "@astrojs/markdown-remark";
 import sitemap from "@astrojs/sitemap";
 import remarkReadingTime from "remark-reading-time";
 import { domain, trailingSlash } from "./src/config/site";
 
 export default defineConfig({
+  output: "server",
+  adapter: cloudflare({
+    sessionKVBindingName: "SESSION",
+    prerenderEnvironment: "workerd",
+    remoteBindings: false,
+  }),
   site: `https://${domain}`,
   trailingSlash: trailingSlash ? "always" : "never",
   // Preserve Astro 6's HTML-aware whitespace handling after the Astro 7 upgrade.
   compressHTML: true,
-  integrations: [sitemap()],
+  integrations: [
+    sitemap({
+      filter: (page) => !new URL(page).pathname.startsWith("/crm"),
+    }),
+  ],
+  security: {
+    checkOrigin: true,
+    actionBodySizeLimit: 1024 * 1024,
+  },
   markdown: {
     // Astro 7 defaults to Satteri. This project uses remark plugins, so keep the
     // supported unified processor until those plugins are ported.
@@ -41,9 +56,10 @@ export default defineConfig({
                 const src = escape(img.url);
                 const alt = escape(img.alt);
                 const title = img.title ? ` title="${escape(img.title)}"` : "";
-                const dimensions = {
-                  "/images/compressor.jpg": ' width="862" height="575"',
-                }[src] || "";
+                const dimensions =
+                  {
+                    "/images/compressor.jpg": ' width="862" height="575"',
+                  }[src] || "";
                 const caption = alt ? `<figcaption>${alt}</figcaption>` : "";
                 return {
                   type: "html",

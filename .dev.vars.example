@@ -1,0 +1,16 @@
+# Copy this file to .dev.vars for local Worker development.
+# Never commit real credentials.
+
+SEND16_API_KEY=""
+SEND16_FROM_EMAIL="mackayrefrig@mafia.net.au"
+SEND16_FROM_NAME="Mackay Refrigeration"
+SEND16_REPLY_TO="service@mackayrefrig.com.au"
+STAFF_LOGIN_FROM_EMAIL="service@mackayrefrig.com.au"
+STAFF_NOTIFICATION_EMAIL="service@mackayrefrig.com.au"
+CRM_BASE_URL="http://127.0.0.1:4321"
+
+# Optional: enable Turnstile verification for public contact submissions.
+TURNSTILE_SECRET_KEY=""
+
+# Optional: protect future internal cron/admin endpoints.
+CRON_SECRET=""

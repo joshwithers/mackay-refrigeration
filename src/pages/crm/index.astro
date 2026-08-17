@@ -1,0 +1,169 @@
+---
+import Base from "../../layouts/Base.astro";
+import { runtimeEnv } from "../../server/db";
+
+export const prerender = false;
+
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+const current = runtimeEnv();
+const [newCount, unassignedCount, awaitingCount, dueCount, enquiries] =
+  await Promise.all([
+    current.DB.prepare(
+      `SELECT COUNT(*) AS count FROM enquiries WHERE status = 'new'`,
+    ).first<{ count: number }>(),
+    current.DB.prepare(
+      `SELECT COUNT(*) AS count FROM enquiries WHERE owner_id IS NULL AND status NOT IN ('complete', 'archived')`,
+    ).first<{ count: number }>(),
+    current.DB.prepare(
+      `SELECT COUNT(*) AS count FROM form_invites WHERE completed_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
+    )
+      .bind(new Date().toISOString())
+      .first<{ count: number }>(),
+    current.DB.prepare(
+      `SELECT COUNT(*) AS count FROM tasks WHERE completed_at IS NULL AND due_at <= ?`,
+    )
+      .bind(new Date().toISOString())
+      .first<{ count: number }>(),
+    current.DB.prepare(
+      `SELECT e.id, e.service, e.status, e.urgency, e.created_at, c.id AS contact_id, c.name, c.phone
+     FROM enquiries e JOIN contacts c ON c.id = e.contact_id
+     WHERE e.status NOT IN ('complete', 'archived') ORDER BY e.urgency = 'urgent' DESC, e.updated_at DESC LIMIT 20`,
+    ).all<{
+      id: string;
+      service: string | null;
+      status: string;
+      urgency: string;
+      created_at: string;
+      contact_id: string;
+      name: string;
+      phone: string | null;
+    }>(),
+  ]);
+
+const cards = [
+  {
+    label: "New enquiries",
+    value: newCount?.count ?? 0,
+    href: "/crm/contacts",
+  },
+  {
+    label: "Unassigned",
+    value: unassignedCount?.count ?? 0,
+    href: "/crm/contacts",
+  },
+  {
+    label: "Forms awaiting completion",
+    value: awaitingCount?.count ?? 0,
+    href: "/crm/contacts",
+  },
+  {
+    label: "Follow-ups due",
+    value: dueCount?.count ?? 0,
+    href: "/crm/contacts",
+  },
+];
+---
+
+<Base
+  title="CRM dashboard"
+  description="Mackay Refrigeration CRM dashboard."
+  noindex
+>
+  <div class="crm-shell">
+    <header class="crm-header">
+      <div>
+        <div class="hero-badge"><span class="pulse"></span> Operations</div>
+        <h1>
+          Good morning, <span class="cold"
+            >{Astro.locals.user.name.split(" ")[0]}</span>
+        </h1>
+        <p class="crm-muted">
+          Here’s what needs attention across Mackay Refrigeration.
+        </p>
+      </div>
+      <div class="crm-header-actions">
+        <a class="cta-btn" href="/crm/new">+ Phone enquiry</a>
+        <form method="POST" action="/crm/logout">
+          <button class="crm-logout" type="submit">Sign out</button>
+        </form>
+      </div>
+    </header>
+
+    <nav class="crm-nav" aria-label="CRM navigation">
+      <a class="active" href="/crm">Dashboard</a>
+      <a href="/crm/contacts">Contacts</a>
+      <a href="/crm/new">New enquiry</a>
+      {
+        Astro.locals.user.role === "admin" && (
+          <a href="/crm/settings">Settings</a>
+        )
+      }
+    </nav>
+
+    <section class="crm-stat-grid" aria-label="CRM summary">
+      {
+        cards.map((card) => (
+          <a class="crm-stat-card" href={card.href}>
+            <span>{card.label}</span>
+            <strong>{card.value}</strong>
+          </a>
+        ))
+      }
+    </section>
+
+    <section class="crm-panel">
+      <div class="crm-panel-heading">
+        <div>
+          <div class="crm-kicker">Live pipeline</div>
+          <h2>Enquiries needing attention</h2>
+        </div>
+        <a class="crm-text-link" href="/crm/contacts">View all →</a>
+      </div>
+      {
+        enquiries.results.length ? (
+          <div class="crm-list">
+            {enquiries.results.map(
+              (enquiry: {
+                id: string;
+                service: string | null;
+                status: string;
+                urgency: string;
+                created_at: string;
+                contact_id: string;
+                name: string;
+                phone: string | null;
+              }) => (
+                <a
+                  class="crm-list-row"
+                  href={`/crm/contacts/${enquiry.contact_id}`}
+                >
+                  <div class="crm-list-main">
+                    <strong>{enquiry.name}</strong>
+                    <span>
+                      {enquiry.service || "General enquiry"} ·{" "}
+                      {enquiry.phone || "No phone recorded"}
+                    </span>
+                  </div>
+                  <div class="crm-list-meta">
+                    <span
+                      class:list={["crm-status", `status-${enquiry.status}`]}
+                    >
+                      {enquiry.status.replaceAll("-", " ")}
+                    </span>
+                    {enquiry.urgency === "urgent" && (
+                      <span class="crm-urgent">Urgent</span>
+                    )}
+                  </div>
+                </a>
+              ),
+            )}
+          </div>
+        ) : (
+          <div class="crm-empty">
+            No open enquiries yet. Phone or website enquiries will appear here.
+          </div>
+        )
+      }
+    </section>
+  </div>
+</Base>

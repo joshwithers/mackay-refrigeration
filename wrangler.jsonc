@@ -1,0 +1,47 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "mackay-refrigeration",
+  "account_id": "60ef6bd2c48d5beb6fd6a093cff863cf",
+  "compatibility_date": "2026-08-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "CRM_BASE_URL": "https://mackay-refrigeration.withersco.workers.dev",
+    "SEND16_FROM_EMAIL": "mackayrefrig@mafia.net.au",
+    "SEND16_FROM_NAME": "Mackay Refrigeration",
+    "SEND16_REPLY_TO": "service@mackayrefrig.com.au",
+    "STAFF_NOTIFICATION_EMAIL": "service@mackayrefrig.com.au",
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "none",
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "mackay-refrigeration-crm",
+      "database_id": "0349691e-bba1-407c-bd0e-a5a30074e5e9",
+      "preview_database_id": "627ed9ec-f3b8-4cad-b5e5-90d4f7521299",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "SESSION",
+      "id": "f4686480506044d6907a835238d946c6",
+      "preview_id": "9c0d2c575f4e4c4b8cb39bf2774a0001",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EMAIL_QUEUE",
+        "queue": "mackay-refrigeration-email",
+      },
+    ],
+  },
+}

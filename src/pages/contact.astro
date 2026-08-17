@@ -2,12 +2,21 @@
 import Base from '../layouts/Base.astro';
 import PageHero from '../components/PageHero.astro';
 import Footer from '../components/Footer.astro';
-import { formAction } from '../config/site';
+import MarkdownForm from '../components/MarkdownForm.astro';
+import { getEntry } from 'astro:content';
+import { actions } from 'astro:actions';
 
-const isNetlify = formAction === 'netlify';
-const formAttrs = isNetlify
-  ? { 'data-netlify': 'true', 'netlify-honeypot': 'bot-field' }
-  : { action: formAction };
+export const prerender = false;
+
+const definition = await getEntry('forms', 'contact');
+if (!definition) throw new Error('The contact form definition is missing.');
+const actionResult = Astro.getActionResult(actions.forms.submit);
+const actionData = actionResult?.data as {
+  success?: boolean;
+  formType?: string;
+  errors?: Record<string, string>;
+  values?: Record<string, string | string[]>;
+} | undefined;
 ---
 
 <Base
@@ -26,63 +35,13 @@ const formAttrs = isNetlify
     <div class="contact-form-col">
       <div class="contact-col-label">Send us a message</div>
 
-      <form name="contact" method="POST" {...formAttrs}>
-        {isNetlify && <input type="hidden" name="form-name" value="contact" />}
-        {isNetlify && (
-          <p class="bot-field" style="display:none">
-            <label>Don't fill this out: <input name="bot-field" /></label>
-          </p>
-        )}
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="name">Name</label>
-            <input class="form-input" type="text" id="name" name="name" placeholder="Jane Smith" required />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="company">Company <span class="form-optional">(optional)</span></label>
-            <input class="form-input" type="text" id="company" name="company" placeholder="Venue or business name" />
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="phone">Phone</label>
-            <input class="form-input" type="tel" id="phone" name="phone" placeholder="07 xxxx xxxx" required />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="email">Email</label>
-            <input class="form-input" type="email" id="email" name="email" placeholder="you@example.com" />
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="service">Service required</label>
-          <select class="form-select" id="service" name="service">
-            <option value="" disabled selected>Select a service…</option>
-            <option value="cold-room">Cold Room Build</option>
-            <option value="freezer-room">Freezer Room Build</option>
-            <option value="commercial-refrigeration">Commercial Refrigeration</option>
-            <option value="air-conditioning">Air Conditioning</option>
-            <option value="beer-post-mix">Beer &amp; Post Mix Systems</option>
-            <option value="maintenance">Maintenance / Servicing Contract</option>
-            <option value="emergency">Emergency Repair</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="message">Tell us about your project</label>
-          <textarea class="form-textarea" id="message" name="message" placeholder="Brief description — size, location, timeline, any specifics we should know…" rows="5"></textarea>
-        </div>
-
-        <button type="submit" class="cta-btn" style="width:100%; justify-content:center;">
-          Send enquiry
-          <svg viewBox="0 0 16 16">
-            <path d="M3 8 L13 8 M9 4 L13 8 L9 12"/>
-          </svg>
-        </button>
-      </form>
+      <MarkdownForm
+        definition={definition.data}
+        formType="contact"
+        errors={actionData?.formType === 'contact' ? actionData.errors : undefined}
+        values={actionData?.formType === 'contact' ? actionData.values : undefined}
+        success={actionData?.success === true && actionData.formType === 'contact'}
+      />
     </div>
 
     <!-- ── Business Details ── -->

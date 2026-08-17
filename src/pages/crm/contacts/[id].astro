@@ -1,0 +1,458 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { actions } from "astro:actions";
+import { runtimeEnv } from "../../../server/db";
+
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+
+const id = Astro.params.id;
+const user = Astro.locals.user;
+if (!user) return Astro.redirect("/crm/login");
+const current = runtimeEnv();
+const contact = await current.DB.prepare(
+  `SELECT c.*, o.name AS organisation_name FROM contacts c LEFT JOIN organisations o ON o.id = c.organisation_id WHERE c.id = ?`,
+)
+  .bind(id)
+  .first<{
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    notes: string | null;
+    organisation_name: string | null;
+  }>();
+if (!contact) return Astro.redirect("/crm/contacts");
+const [enquiries, invites, submissions, notes, activity] = await Promise.all([
+  current.DB.prepare(
+    `SELECT id, service, message, status, urgency, created_at FROM enquiries WHERE contact_id = ? ORDER BY created_at DESC`,
+  )
+    .bind(id)
+    .all<{
+      id: string;
+      service: string | null;
+      message: string | null;
+      status: string;
+      urgency: string;
+      created_at: string;
+    }>(),
+  current.DB.prepare(
+    `SELECT id, form_slug, expires_at, completed_at, revoked_at, created_at FROM form_invites WHERE contact_id = ? ORDER BY created_at DESC`,
+  )
+    .bind(id)
+    .all<{
+      id: string;
+      form_slug: string;
+      expires_at: string;
+      completed_at: string | null;
+      revoked_at: string | null;
+      created_at: string;
+    }>(),
+  current.DB.prepare(
+    `SELECT id, form_slug, form_version, enquiry_id, created_at FROM form_submissions WHERE contact_id = ? ORDER BY created_at DESC`,
+  )
+    .bind(id)
+    .all<{
+      id: string;
+      form_slug: string;
+      form_version: string;
+      enquiry_id: string | null;
+      created_at: string;
+    }>(),
+  current.DB.prepare(
+    `SELECT n.body, n.created_at, su.name AS author FROM notes n LEFT JOIN staff_users su ON su.id = n.author_id WHERE n.contact_id = ? ORDER BY n.created_at DESC`,
+  )
+    .bind(id)
+    .all<{ body: string; created_at: string; author: string | null }>(),
+  current.DB.prepare(
+    `SELECT event_type, summary, created_at FROM activity_events WHERE contact_id = ? ORDER BY created_at DESC LIMIT 30`,
+  )
+    .bind(id)
+    .all<{ event_type: string; summary: string; created_at: string }>(),
+]);
+const defaultEnquiry = enquiries.results[0];
+const sendResult = Astro.getActionResult(actions.staff.sendInvite);
+const noteResult = Astro.getActionResult(actions.staff.addNote);
+const statusResult = Astro.getActionResult(actions.staff.updateStatus);
+---
+
+<Base
+  title={`${contact.name} — CRM`}
+  description="Mackay Refrigeration CRM contact record."
+  noindex
+>
+  <div class="crm-shell">
+    <div class="crm-breadcrumb">
+      <a href="/crm">CRM</a> / <a href="/crm/contacts">Contacts</a> / {
+        contact.name
+      }
+    </div>
+    <header class="crm-header crm-contact-header">
+      <div>
+        <div class="hero-badge"><span class="pulse"></span> Contact record</div>
+        <h1>{contact.name}</h1>
+        <p class="crm-muted">
+          {contact.organisation_name || "Individual customer"} · Added customer record
+        </p>
+      </div>
+      <div class="crm-header-actions">
+        {
+          contact.phone && (
+            <a class="cta-btn" href={`tel:${contact.phone}`}>
+              Call {contact.phone}
+            </a>
+          )
+        }
+        {
+          contact.email && (
+            <a class="crm-secondary-btn" href={`mailto:${contact.email}`}>
+              Email
+            </a>
+          )
+        }
+      </div>
+    </header>
+
+    <section class="crm-contact-grid">
+      <div class="crm-main-column">
+        <div class="crm-panel">
+          <div class="crm-panel-heading">
+            <div>
+              <div class="crm-kicker">Enquiries</div><h2>Work to follow up</h2>
+            </div><a class="crm-text-link" href="/crm/new"
+              >+ Add phone enquiry</a>
+          </div>
+          {
+            enquiries.results.length ? (
+              <div class="crm-list">
+                {enquiries.results.map(
+                  (enquiry: {
+                    id: string;
+                    service: string | null;
+                    message: string | null;
+                    status: string;
+                    urgency: string;
+                    created_at: string;
+                  }) => (
+                    <div class="crm-list-row crm-list-row-stack">
+                      <div class="crm-list-main">
+                        <strong>{enquiry.service || "General enquiry"}</strong>
+                        <span>
+                          {enquiry.message || "No notes recorded"} ·{" "}
+                          {new Date(enquiry.created_at).toLocaleDateString(
+                            "en-AU",
+                          )}
+                        </span>
+                      </div>
+                      <div class="crm-list-meta">
+                        <span
+                          class:list={[
+                            "crm-status",
+                            `status-${enquiry.status}`,
+                          ]}
+                        >
+                          {enquiry.status.replaceAll("-", " ")}
+                        </span>
+                        {enquiry.urgency === "urgent" && (
+                          <span class="crm-urgent">Urgent</span>
+                        )}
+                      </div>
+                      {user.role !== "readonly" && (
+                        <form
+                          method="POST"
+                          action={actions.staff.updateStatus}
+                          class="crm-inline-form"
+                        >
+                          <input
+                            type="hidden"
+                            name="enquiryId"
+                            value={enquiry.id}
+                          />
+                          <label class="sr-only" for={`status-${enquiry.id}`}>
+                            Change status
+                          </label>
+                          <select
+                            id={`status-${enquiry.id}`}
+                            name="status"
+                            class="crm-inline-select"
+                          >
+                            {[
+                              "new",
+                              "triaged",
+                              "awaiting customer details",
+                              "ready to schedule",
+                              "booked",
+                              "complete",
+                              "archived",
+                            ].map((status) => (
+                              <option
+                                value={status}
+                                selected={status === enquiry.status}
+                              >
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                          <button class="crm-small-button" type="submit">
+                            Update
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <div class="crm-empty">No enquiries recorded yet.</div>
+            )
+          }
+          {
+            statusResult?.data?.success && (
+              <p class="crm-success">Status updated.</p>
+            )
+          }
+        </div>
+
+        <div class="crm-panel">
+          <div class="crm-panel-heading">
+            <div>
+              <div class="crm-kicker">Forms</div><h2>Customer forms</h2>
+            </div>
+          </div>
+          <div class="crm-form-actions">
+            {
+              contact.email ? (
+                <>
+                  {(["service-supply", "hire-contract"] as const).map(
+                    (formType) => (
+                      <form method="POST" action={actions.staff.sendInvite}>
+                        <input type="hidden" name="formType" value={formType} />
+                        <input
+                          type="hidden"
+                          name="contactId"
+                          value={contact.id}
+                        />
+                        {defaultEnquiry && (
+                          <input
+                            type="hidden"
+                            name="enquiryId"
+                            value={defaultEnquiry.id}
+                          />
+                        )}
+                        <button class="crm-secondary-btn" type="submit">
+                          Send{" "}
+                          {formType === "hire-contract"
+                            ? "hire contract"
+                            : "service supply form"}{" "}
+                          →
+                        </button>
+                      </form>
+                    ),
+                  )}
+                </>
+              ) : (
+                <p class="crm-muted">
+                  Add an email address before sending a form.
+                </p>
+              )
+            }
+          </div>
+          {
+            sendResult?.data?.success && (
+              <p class="crm-success">Form invitation queued.</p>
+            )
+          }
+          {
+            sendResult?.data?.message && (
+              <p class="crm-error">{sendResult.data.message}</p>
+            )
+          }
+          {
+            invites.results.length ? (
+              <div class="crm-list crm-list-compact">
+                {invites.results.map(
+                  (invite: {
+                    id: string;
+                    form_slug: string;
+                    expires_at: string;
+                    completed_at: string | null;
+                    revoked_at: string | null;
+                    created_at: string;
+                  }) => (
+                    <div class="crm-list-row">
+                      <div class="crm-list-main">
+                        <strong>{invite.form_slug}</strong>
+                        <span>
+                          Expires{" "}
+                          {new Date(invite.expires_at).toLocaleDateString(
+                            "en-AU",
+                          )}
+                        </span>
+                      </div>
+                      <div class="crm-list-meta">
+                        <span class="crm-status">
+                          {invite.completed_at
+                            ? "Completed"
+                            : invite.revoked_at
+                              ? "Revoked"
+                              : "Awaiting"}
+                        </span>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null
+          }
+          {
+            submissions.results.length ? (
+              <div class="crm-list crm-list-compact">
+                {submissions.results.map(
+                  (submission: {
+                    id: string;
+                    form_slug: string;
+                    form_version: string;
+                    enquiry_id: string | null;
+                    created_at: string;
+                  }) => (
+                    <div class="crm-list-row">
+                      <div class="crm-list-main">
+                        <strong>{submission.form_slug}</strong>
+                        <span>
+                          Version {submission.form_version} ·{" "}
+                          {new Date(submission.created_at).toLocaleDateString(
+                            "en-AU",
+                          )}
+                        </span>
+                      </div>
+                      <div class="crm-list-meta">
+                        <span class="crm-status status-complete">Received</span>
+                      </div>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null
+          }
+        </div>
+
+        <div class="crm-panel">
+          <div class="crm-panel-heading">
+            <div><div class="crm-kicker">Notes</div><h2>Staff notes</h2></div>
+          </div>
+          {
+            user.role !== "readonly" && (
+              <form
+                method="POST"
+                action={actions.staff.addNote}
+                class="crm-note-form"
+              >
+                <input type="hidden" name="contactId" value={contact.id} />
+                {defaultEnquiry && (
+                  <input
+                    type="hidden"
+                    name="enquiryId"
+                    value={defaultEnquiry.id}
+                  />
+                )}
+                <label class="sr-only" for="note-body">
+                  Add a note
+                </label>
+                <textarea
+                  class="form-textarea"
+                  id="note-body"
+                  name="body"
+                  rows="4"
+                  placeholder="Add a note for the team…"
+                  required
+                />
+                <button class="cta-btn" type="submit">
+                  Save note →
+                </button>
+              </form>
+            )
+          }
+          {noteResult?.data?.success && <p class="crm-success">Note saved.</p>}
+          {
+            notes.results.map(
+              (note: {
+                body: string;
+                created_at: string;
+                author: string | null;
+              }) => (
+                <div class="crm-note">
+                  <>
+                    <p>{note.body}</p>
+                    <span>
+                      {note.author || "Staff"} ·{" "}
+                      {new Date(note.created_at).toLocaleString("en-AU")}
+                    </span>
+                  </>
+                </div>
+              ),
+            )
+          }
+        </div>
+      </div>
+
+      <aside class="crm-side-column">
+        <div class="crm-panel crm-details-panel">
+          <div class="crm-kicker">Details</div><dl class="crm-details">
+            <div>
+              <dt>Email</dt><dd>
+                {
+                  contact.email ? (
+                    <a href={`mailto:${contact.email}`}>{contact.email}</a>
+                  ) : (
+                    "Not recorded"
+                  )
+                }
+              </dd>
+            </div><div>
+              <dt>Phone</dt><dd>
+                {
+                  contact.phone ? (
+                    <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                  ) : (
+                    "Not recorded"
+                  )
+                }
+              </dd>
+            </div><div>
+              <dt>Company</dt><dd>
+                {contact.organisation_name || "Not recorded"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div class="crm-panel">
+          <div class="crm-kicker">Timeline</div><div class="crm-timeline">
+            {
+              activity.results.map(
+                (event: {
+                  event_type: string;
+                  summary: string;
+                  created_at: string;
+                }) => (
+                  <div class="crm-timeline-item">
+                    <>
+                      <span class="crm-timeline-dot" />
+                      <div>
+                        <>
+                          <strong>{event.summary}</strong>
+                          <span>
+                            {new Date(event.created_at).toLocaleString("en-AU")}
+                          </span>
+                        </>
+                      </div>
+                    </>
+                  </div>
+                ),
+              )
+            }
+          </div>
+        </div>
+      </aside>
+    </section>
+  </div>
+</Base>

@@ -1,0 +1,149 @@
+---
+import Base from "../../layouts/Base.astro";
+import { actions } from "astro:actions";
+import { runtimeEnv } from "../../server/db";
+
+export const prerender = false;
+
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+if (Astro.locals.user.role !== "admin") return Astro.redirect("/crm");
+
+const current = runtimeEnv();
+const rules = await current.DB.prepare(
+  `SELECT id, event_type, recipient_email, updated_at
+   FROM notification_rules WHERE active = 1 ORDER BY event_type, recipient_email`,
+).all<{
+  id: string;
+  event_type: string;
+  recipient_email: string;
+  updated_at: string;
+}>();
+const saveResult = Astro.getActionResult(actions.staff.saveNotificationRule);
+const removeResult = Astro.getActionResult(
+  actions.staff.removeNotificationRule,
+);
+---
+
+<Base
+  title="CRM settings"
+  description="Mackay Refrigeration CRM notification settings."
+  noindex
+>
+  <div class="crm-shell">
+    <div class="crm-breadcrumb"><a href="/crm">CRM</a> / Settings</div>
+    <header class="crm-header">
+      <div>
+        <div class="hero-badge"><span class="pulse"></span> CRM settings</div>
+        <h1>Notification <span class="cold">settings</span></h1>
+        <p class="crm-muted">
+          Choose which staff inboxes receive new enquiries and completed
+          customer forms.
+        </p>
+      </div>
+      <div class="crm-header-actions">
+        <a class="crm-secondary-btn" href="/crm">Back to dashboard</a>
+      </div>
+    </header>
+
+    <section class="crm-settings-grid">
+      <div class="crm-panel">
+        <div class="crm-panel-heading">
+          <div>
+            <div class="crm-kicker">Add recipient</div><h2>
+              Send notifications to
+            </h2>
+          </div>
+        </div>
+        <form
+          method="POST"
+          action={actions.staff.saveNotificationRule}
+          class="crm-form"
+        >
+          <label class="form-label" for="rule-event">Notification type</label>
+          <select class="form-select" id="rule-event" name="eventType">
+            <option value="form_submitted">Completed customer form</option>
+            <option value="enquiry_created"
+              >New enquiry (website or phone)</option
+            >
+          </select>
+          <label class="form-label" for="rule-email">Staff email address</label>
+          <input
+            class="form-input"
+            type="email"
+            id="rule-email"
+            name="recipientEmail"
+            required
+            autocomplete="email"
+            placeholder="staff@example.com"
+          />
+          <button class="cta-btn" type="submit"
+            >Save recipient <span aria-hidden="true">→</span></button
+          >
+        </form>
+        {
+          saveResult?.data?.success && (
+            <p class="crm-success" role="status">
+              Notification recipient saved.
+            </p>
+          )
+        }
+        {
+          saveResult?.error && (
+            <p class="crm-error" role="alert">
+              Could not save that recipient. Check the address and try again.
+            </p>
+          )
+        }
+        {
+          removeResult?.data?.success && (
+            <p class="crm-success" role="status">
+              Notification recipient removed.
+            </p>
+          )
+        }
+      </div>
+
+      <div class="crm-panel">
+        <div class="crm-panel-heading">
+          <div>
+            <div class="crm-kicker">Active rules</div><h2>
+              Current recipients
+            </h2>
+          </div>
+        </div>
+        {
+          rules.results.length ? (
+            <div class="crm-list crm-list-compact">
+              {rules.results.map((rule) => (
+                <div class="crm-list-row">
+                  <div class="crm-list-main">
+                    <strong>{rule.recipient_email}</strong>
+                    <span>
+                      {rule.event_type === "form_submitted"
+                        ? "Completed customer forms"
+                        : "New enquiries"}
+                    </span>
+                  </div>
+                  <form
+                    method="POST"
+                    action={actions.staff.removeNotificationRule}
+                  >
+                    <input type="hidden" name="id" value={rule.id} />
+                    <button class="crm-small-button" type="submit">
+                      Remove
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div class="crm-empty">
+              No CRM rules yet. Notifications use the configured fallback staff
+              email until you add a recipient here.
+            </div>
+          )
+        }
+      </div>
+    </section>
+  </div>
+</Base>

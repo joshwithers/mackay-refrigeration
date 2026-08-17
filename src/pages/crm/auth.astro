@@ -1,0 +1,39 @@
+---
+import Base from "../../layouts/Base.astro";
+import { consumeLoginToken, createSession } from "../../server/auth";
+
+export const prerender = false;
+
+const token = Astro.url.searchParams.get("token");
+const identity = token ? await consumeLoginToken(token) : null;
+if (identity) {
+  const session = await createSession(identity.staffUserId);
+  Astro.cookies.set("crm_session", session.value, {
+    path: "/",
+    httpOnly: true,
+    secure: import.meta.env.PROD,
+    sameSite: "lax",
+    expires: new Date(session.expiresAt),
+  });
+  return Astro.redirect("/crm");
+}
+---
+
+<Base
+  title="CRM link expired"
+  description="Mackay Refrigeration CRM login link."
+  noindex
+>
+  <div class="crm-auth-page">
+    <div class="crm-auth-card">
+      <div class="hero-badge"><span class="pulse"></span> Link unavailable</div>
+      <h1>This login link has <span class="cold">expired</span></h1>
+      <p>
+        Request a new link and we’ll send it to your authorised staff email.
+      </p>
+      <a class="cta-btn" href="/crm/login"
+        >Request a new link <span aria-hidden="true">→</span></a
+      >
+    </div>
+  </div>
+</Base>

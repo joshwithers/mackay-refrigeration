@@ -2,6 +2,22 @@
 import Base from '../layouts/Base.astro';
 import Footer from '../components/Footer.astro';
 import { domain } from '../config/site';
+import MarkdownForm from '../components/MarkdownForm.astro';
+import { getEntry } from 'astro:content';
+import { actions } from 'astro:actions';
+
+export const prerender = false;
+
+const definition = await getEntry('forms', 'hire-contract');
+if (!definition) throw new Error('The hire contract form definition is missing.');
+const token = Astro.url.searchParams.get('token') || '';
+const actionResult = Astro.getActionResult(actions.forms.submit);
+const actionData = actionResult?.data as {
+  success?: boolean;
+  formType?: string;
+  errors?: Record<string, string>;
+  values?: Record<string, string | string[]>;
+} | undefined;
 ---
 
 <Base
@@ -239,7 +255,16 @@ import { domain } from '../config/site';
       </p>
     </div>
 
-    <form name="hire-contract" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+    <MarkdownForm
+      definition={definition.data}
+      formType="hire-contract"
+      inviteToken={token}
+      errors={actionData?.formType === 'hire-contract' ? actionData.errors : undefined}
+      values={actionData?.formType === 'hire-contract' ? actionData.values : undefined}
+      success={actionData?.success === true && actionData.formType === 'hire-contract'}
+    />
+
+    <div class="legacy-hire-form" hidden>
       <input type="hidden" name="form-name" value="hire-contract" />
       <p style="display:none"><label>Don't fill this in: <input name="bot-field" /></label></p>
 
@@ -374,7 +399,7 @@ import { domain } from '../config/site';
         </svg>
       </button>
 
-    </form>
+    </div>
   </div>
 
   <Footer />

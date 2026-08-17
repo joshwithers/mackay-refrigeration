@@ -1,5 +1,6 @@
 # build output
 dist/
+.wrangler/
 
 # trashed legacy files (kept locally for reference)
 _trash/
@@ -25,6 +26,7 @@ lighthouse-*.json
 # environment variables
 .env
 .env.production
+.dev.vars
 
 # macOS-specific files
 .DS_Store

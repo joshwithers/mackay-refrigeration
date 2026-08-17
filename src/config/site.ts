@@ -4,8 +4,8 @@ import ogImage from "../assets/images/og-image.png";
 // These two values drive the entire site. Change them here and everything
 // (astro.config, canonical URLs, structured data, llms.txt, etc.) follows.
 // ─────────────────────────────────────────────────────────────────────────────
-export const domain = "mackay-refrigeration.pages.dev";
-export const trailingSlash = true;
+export const domain = "mackay-refrigeration.withersco.workers.dev";
+export const trailingSlash = false;
 
 /**
  * Normalise an internal path according to the site's trailingSlash preference.
@@ -41,12 +41,6 @@ export function fullUrl(path: string = '/'): string {
 
 // Default theme: 'dark' or 'light' — used by all layouts when no user preference is stored
 export const defaultTheme: "dark" | "light" = "dark";
-
-// ─── Contact form ────────────────────────────────────────────────────────────
-// Set to "netlify" to use Netlify Forms (no backend needed on Netlify hosting).
-// Set to a URL (e.g. "https://formspree.io/f/xyzabc") to POST to a custom endpoint.
-// ─────────────────────────────────────────────────────────────────────────────
-export const formAction: "netlify" | string = "netlify";
 
 export const siteConfig = {
   name: "Mackay Refrigeration & Air-Conditioning",

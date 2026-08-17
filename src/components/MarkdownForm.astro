@@ -1,0 +1,218 @@
+---
+import { actions } from "astro:actions";
+import type { FormDefinition } from "../lib/forms";
+
+interface Props {
+  definition: FormDefinition;
+  formType: string;
+  inviteToken?: string;
+  values?: Record<string, string | string[]>;
+  errors?: Record<string, string>;
+  success?: boolean;
+}
+
+const {
+  definition,
+  formType,
+  inviteToken = "",
+  values = {},
+  errors = {},
+  success = false,
+} = Astro.props;
+
+const valueFor = (id: string): string | string[] => values[id] ?? "";
+const checked = (id: string, option: string): boolean => {
+  const value = valueFor(id);
+  return Array.isArray(value) ? value.includes(option) : value === option;
+};
+---
+
+{
+  success ? (
+    <div class="form-confirmation" role="status">
+      <div class="hero-badge">
+        <span class="pulse" /> Received
+      </div>
+      <h2>{definition.confirmationTitle}</h2>
+      <p>{definition.confirmationMessage}</p>
+    </div>
+  ) : (
+    <form class="markdown-form" method="POST" action={actions.forms.submit}>
+      <input type="hidden" name="form_type" value={formType} />
+      {inviteToken && (
+        <input type="hidden" name="invite_token" value={inviteToken} />
+      )}
+      <div class="form-honeypot" aria-hidden="true">
+        <label for={`${formType}-website`}>Website</label>
+        <input
+          id={`${formType}-website`}
+          name="website"
+          tabindex="-1"
+          autocomplete="off"
+        />
+      </div>
+
+      {errors._form && (
+        <p class="form-error form-error-summary" role="alert">
+          {errors._form}
+        </p>
+      )}
+
+      {definition.sections.map((section) => (
+        <fieldset class="hire-fieldset markdown-form-section">
+          <legend class="hire-fieldset-legend">{section.title}</legend>
+          <div class="hire-fieldset-body">
+            {section.description && (
+              <p class="form-help section-help">{section.description}</p>
+            )}
+            <div class="markdown-form-fields">
+              {section.fields.map((field) => {
+                const error = errors[field.id];
+                const id = `${formType}-${field.id}`;
+                const current = valueFor(field.id);
+                return (
+                  <div
+                    class:list={[
+                      "form-group",
+                      field.type === "textarea" ? "form-group-wide" : "",
+                    ]}
+                  >
+                    {field.type === "acceptance" ? (
+                      <label
+                        class="understand-item markdown-acceptance"
+                        for={id}
+                      >
+                        <input
+                          class="hire-check"
+                          type="checkbox"
+                          id={id}
+                          name={field.id}
+                          value="yes"
+                          checked={checked(field.id, "yes")}
+                          required={field.required}
+                        />
+                        <span class="understand-text">{field.label}</span>
+                      </label>
+                    ) : field.type === "checkbox" || field.type === "radio" ? (
+                      <>
+                        <span class="form-label">
+                          {field.label}
+                          {field.required && (
+                            <span class="form-required"> *</span>
+                          )}
+                        </span>
+                        <div
+                          class:list={[
+                            field.type === "checkbox"
+                              ? "checkbox-group"
+                              : "radio-group",
+                          ]}
+                        >
+                          {(field.options ?? []).map((option, optionIndex) => {
+                            const optionId = `${id}-${optionIndex}`;
+                            return (
+                              <label class="checkbox-label" for={optionId}>
+                                <input
+                                  class="hire-check"
+                                  type={
+                                    field.type === "radio"
+                                      ? "radio"
+                                      : "checkbox"
+                                  }
+                                  id={optionId}
+                                  name={field.id}
+                                  value={option.value}
+                                  checked={
+                                    field.type === "checkbox"
+                                      ? checked(field.id, option.value)
+                                      : current === option.value
+                                  }
+                                  required={field.required && optionIndex === 0}
+                                />
+                                {option.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <label class="form-label" for={id}>
+                          {field.label}
+                          {field.required && (
+                            <span class="form-required"> *</span>
+                          )}
+                        </label>
+                        {field.type === "textarea" ? (
+                          <textarea
+                            class="form-textarea"
+                            id={id}
+                            name={field.id}
+                            rows={field.rows ?? 5}
+                            placeholder={field.placeholder}
+                            autocomplete={field.autocomplete}
+                            required={field.required}
+                          >
+                            {Array.isArray(current)
+                              ? current.join(", ")
+                              : current}
+                          </textarea>
+                        ) : field.type === "select" ? (
+                          <select
+                            class="form-select"
+                            id={id}
+                            name={field.id}
+                            required={field.required}
+                          >
+                            <option value="">Select an option…</option>
+                            {(field.options ?? []).map((option) => (
+                              <option
+                                value={option.value}
+                                selected={current === option.value}
+                              >
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            class="form-input"
+                            type={field.type}
+                            id={id}
+                            name={field.id}
+                            value={
+                              Array.isArray(current)
+                                ? (current[0] ?? "")
+                                : current
+                            }
+                            placeholder={field.placeholder}
+                            autocomplete={field.autocomplete}
+                            inputmode={field.inputMode}
+                            required={field.required}
+                          />
+                        )}
+                      </>
+                    )}
+                    {field.help && <p class="form-help">{field.help}</p>}
+                    {error && (
+                      <p class="form-error" role="alert">
+                        {error}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </fieldset>
+      ))}
+
+      <button type="submit" class="cta-btn markdown-form-submit">
+        {definition.submitLabel}
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M3 8 L13 8 M9 4 L13 8 L9 12" />
+        </svg>
+      </button>
+    </form>
+  )
+}

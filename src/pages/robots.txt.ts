@@ -4,6 +4,7 @@ import { fullUrl } from "../config/site";
 const robotsTxt = `
 User-agent: *
 Allow: /
+Disallow: /crm
 
 Sitemap: ${fullUrl("/sitemap-index.xml")}
 
@@ -20,3 +21,4 @@ export const GET: APIRoute = () => {
     },
   });
 };
+export const prerender = true;

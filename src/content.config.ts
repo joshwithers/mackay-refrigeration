@@ -26,4 +26,54 @@ const reviews = defineCollection({
   }),
 });
 
-export const collections = { blog, reviews };
+const formField = z.object({
+  id: z.string().regex(/^[a-z][a-z0-9_]*$/),
+  type: z.enum([
+    "text",
+    "email",
+    "tel",
+    "date",
+    "textarea",
+    "select",
+    "radio",
+    "checkbox",
+    "acceptance",
+  ]),
+  label: z.string(),
+  required: z.boolean().default(false),
+  placeholder: z.string().optional(),
+  help: z.string().optional(),
+  autocomplete: z.string().optional(),
+  inputMode: z.enum(["text", "email", "tel", "numeric", "decimal"]).optional(),
+  rows: z.number().int().min(2).max(12).optional(),
+  options: z
+    .array(
+      z.object({
+        label: z.string(),
+        value: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+const forms = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/content/forms" }),
+  schema: z.object({
+    title: z.string(),
+    slug: z.string(),
+    version: z.string(),
+    description: z.string(),
+    submitLabel: z.string().default("Submit form"),
+    confirmationTitle: z.string().default("Thank you"),
+    confirmationMessage: z.string(),
+    sections: z.array(
+      z.object({
+        title: z.string(),
+        description: z.string().optional(),
+        fields: z.array(formField).min(1),
+      }),
+    ),
+  }),
+});
+
+export const collections = { blog, reviews, forms };

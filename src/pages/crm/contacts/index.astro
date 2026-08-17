@@ -1,0 +1,97 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { runtimeEnv } from "../../../server/db";
+
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+const query = Astro.url.searchParams.get("q")?.trim() || "";
+const current = runtimeEnv();
+const contacts = query
+  ? await current.DB.prepare(
+      `SELECT c.id, c.name, c.email, c.phone, c.updated_at, COUNT(e.id) AS enquiry_count
+       FROM contacts c LEFT JOIN enquiries e ON e.contact_id = c.id
+       WHERE c.name LIKE ? OR c.email LIKE ? OR c.phone LIKE ?
+       GROUP BY c.id ORDER BY c.updated_at DESC LIMIT 50`,
+    )
+      .bind(`%${query}%`, `%${query}%`, `%${query}%`)
+      .all<{
+        id: string;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        updated_at: string;
+        enquiry_count: number;
+      }>()
+  : await current.DB.prepare(
+      `SELECT c.id, c.name, c.email, c.phone, c.updated_at, COUNT(e.id) AS enquiry_count
+       FROM contacts c LEFT JOIN enquiries e ON e.contact_id = c.id
+       GROUP BY c.id ORDER BY c.updated_at DESC LIMIT 50`,
+    ).all<{
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      updated_at: string;
+      enquiry_count: number;
+    }>();
+---
+
+<Base
+  title="CRM contacts"
+  description="Mackay Refrigeration CRM contacts."
+  noindex
+>
+  <div class="crm-shell">
+    <div class="crm-breadcrumb"><a href="/crm">CRM</a> / Contacts</div>
+    <header class="crm-header crm-header-compact">
+      <div><div class="crm-kicker">Customer records</div><h1>Contacts</h1></div>
+      <a class="cta-btn" href="/crm/new">+ Phone enquiry</a>
+    </header>
+    <form class="crm-search" method="GET">
+      <label class="sr-only" for="contact-search">Search contacts</label>
+      <input
+        class="form-input"
+        id="contact-search"
+        name="q"
+        value={query}
+        placeholder="Search name, email or phone…"
+      />
+      <button class="crm-search-button" type="submit">Search</button>
+    </form>
+    <section class="crm-panel">
+      {
+        contacts.results.length ? (
+          <div class="crm-list">
+            {contacts.results.map(
+              (contact: {
+                id: string;
+                name: string;
+                email: string | null;
+                phone: string | null;
+                updated_at: string;
+                enquiry_count: number;
+              }) => (
+                <a class="crm-list-row" href={`/crm/contacts/${contact.id}`}>
+                  <div class="crm-list-main">
+                    <strong>{contact.name}</strong>
+                    <span>
+                      {contact.email || contact.phone || "No contact details"}
+                    </span>
+                  </div>
+                  <div class="crm-list-meta">
+                    <span>
+                      {contact.enquiry_count}{" "}
+                      {contact.enquiry_count === 1 ? "enquiry" : "enquiries"}
+                    </span>
+                  </div>
+                </a>
+              ),
+            )}
+          </div>
+        ) : (
+          <div class="crm-empty">No contacts found.</div>
+        )
+      }
+    </section>
+  </div>
+</Base>

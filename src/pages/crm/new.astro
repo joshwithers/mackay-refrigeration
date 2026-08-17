@@ -1,0 +1,145 @@
+---
+import Base from "../../layouts/Base.astro";
+import { actions } from "astro:actions";
+
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+const result = Astro.getActionResult(actions.staff.createEnquiry);
+const success = result?.data?.success === true;
+---
+
+<Base
+  title="New phone enquiry"
+  description="Record a Mackay Refrigeration phone enquiry."
+  noindex
+>
+  <div class="crm-shell crm-narrow">
+    <div class="crm-breadcrumb"><a href="/crm">CRM</a> / New phone enquiry</div>
+    <div class="crm-panel">
+      <div class="crm-panel-heading">
+        <div>
+          <div class="crm-kicker">Phone call</div><h1>Record an enquiry</h1>
+        </div>
+      </div>
+      {
+        success ? (
+          <div class="form-confirmation" role="status">
+            <h2>Enquiry recorded</h2>
+            <p>The contact and enquiry are now in the CRM.</p>
+            <a
+              class="cta-btn"
+              href={`/crm/contacts/${result?.data?.contactId}`}
+            >
+              Open contact →
+            </a>
+          </div>
+        ) : (
+          <form
+            method="POST"
+            action={actions.staff.createEnquiry}
+            class="crm-form crm-grid-form"
+          >
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-name">
+                  Name *
+                </label>
+                <input
+                  class="form-input"
+                  id="new-name"
+                  name="name"
+                  required
+                  autocomplete="name"
+                />
+              </>
+            </div>
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-company">
+                  Company
+                </label>
+                <input
+                  class="form-input"
+                  id="new-company"
+                  name="company"
+                  autocomplete="organization"
+                />
+              </>
+            </div>
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-phone">
+                  Phone *
+                </label>
+                <input
+                  class="form-input"
+                  id="new-phone"
+                  name="phone"
+                  required
+                  autocomplete="tel"
+                />
+              </>
+            </div>
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-email">
+                  Email
+                </label>
+                <input
+                  class="form-input"
+                  type="email"
+                  id="new-email"
+                  name="email"
+                  autocomplete="email"
+                />
+              </>
+            </div>
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-service">
+                  Service
+                </label>
+                <input
+                  class="form-input"
+                  id="new-service"
+                  name="service"
+                  placeholder="e.g. emergency repair"
+                />
+              </>
+            </div>
+            <div class="form-group">
+              <>
+                <label class="form-label" for="new-urgency">
+                  Urgency
+                </label>
+                <select class="form-select" id="new-urgency" name="urgency">
+                  <>
+                    <option value="standard">Standard</option>
+                    <option value="urgent">Urgent</option>
+                  </>
+                </select>
+              </>
+            </div>
+            <div class="form-group form-group-wide">
+              <>
+                <label class="form-label" for="new-message">
+                  Notes
+                </label>
+                <textarea
+                  class="form-textarea"
+                  id="new-message"
+                  name="message"
+                  rows="6"
+                  placeholder="What did the customer say?"
+                />
+              </>
+            </div>
+            <button class="cta-btn" type="submit">
+              Save enquiry <span aria-hidden="true">→</span>
+            </button>
+          </form>
+        )
+      }
+    </div>
+  </div>
+</Base>

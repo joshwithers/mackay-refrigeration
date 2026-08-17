@@ -1,0 +1,62 @@
+---
+import Base from "../../layouts/Base.astro";
+import { actions } from "astro:actions";
+
+export const prerender = false;
+
+if (Astro.locals.user) return Astro.redirect("/crm");
+const result = Astro.getActionResult(actions.auth.requestLogin);
+const success = result?.data?.success === true;
+---
+
+<Base
+  title="CRM login"
+  description="Secure Mackay Refrigeration CRM login."
+  noindex
+>
+  <div class="crm-auth-page">
+    <div class="crm-auth-card">
+      <div class="hero-badge"><span class="pulse"></span> Staff access</div>
+      <h1>Sign in to the <span class="cold">CRM</span></h1>
+      {
+        success ? (
+          <div class="form-confirmation" role="status">
+            <h2>Check your email</h2>
+            <p>
+              If that address is authorised, a one-time login link is on its
+              way. It expires in 15 minutes.
+            </p>
+          </div>
+        ) : (
+          <>
+            <p class="crm-auth-intro">
+              Enter your staff email and we’ll send a secure magic link.
+            </p>
+            <form
+              method="POST"
+              action={actions.auth.requestLogin}
+              class="crm-form"
+            >
+              <label class="form-label" for="crm-email">
+                Staff email
+              </label>
+              <input
+                class="form-input"
+                type="email"
+                id="crm-email"
+                name="email"
+                required
+                autocomplete="email"
+                placeholder="you@mackayrefrig.com.au"
+              />
+              <button class="cta-btn" type="submit">
+                Email me a login link <span aria-hidden="true">→</span>
+              </button>
+            </form>
+          </>
+        )
+      }
+      <a class="crm-back-link" href="/">← Back to website</a>
+    </div>
+  </div>
+</Base>
