@@ -1,6 +1,6 @@
 # Mackay Refrigeration & Air-Conditioning Website
 
-Business website for **Mackay Refrigeration Pty Ltd**, built with [Astro](https://astro.build) by [Josh Withers](https://joshwithers.au) at [The Internet](https://theinternet.com.au). No frameworks like React or Vue — just Astro components, CSS, and vanilla JavaScript.
+Business website for **Mackay Refrigeration Pty Ltd**, built with Astro 7 by [Josh Withers](https://joshwithers.au) at [The Internet](https://theinternet.com.au). No frameworks like React or Vue — just Astro components, CSS, and vanilla JavaScript.
 
 **Live site:** [mackay-refrigeration.pages.dev](https://mackay-refrigeration.pages.dev)
 
@@ -30,7 +30,7 @@ Business website for **Mackay Refrigeration Pty Ltd**, built with [Astro](https:
 
 You need two things installed on your computer:
 
-- **Node.js** 18 or later (tested on 22.x) — [download here](https://nodejs.org)
+- **Node.js** 24.16 or later in the Node 24 release line (see `.nvmrc`) — [download here](https://nodejs.org)
 - **npm** (comes bundled with Node.js)
 
 To check if you already have them, open a terminal and run:
@@ -150,7 +150,7 @@ fridge-001/
 │   │
 │   ├── styles/
 │   │   ├── refrigeration.css # All custom styles, CSS variables, animations
-│   │   └── global.css        # Tailwind v4 + bridges Tailwind tokens to custom vars
+│   │   └── global.css        # Loads the main stylesheet and focus styles
 │   │
 │   ├── types/
 │   │   └── types.d.ts        # TypeScript type definitions
@@ -247,7 +247,7 @@ To change the colour scheme, edit these variables in `refrigeration.css`.
 
 ### `src/styles/global.css`
 
-Imports Tailwind CSS v4 and `refrigeration.css`. Bridges Tailwind's colour tokens to the custom CSS variables so they work together. You rarely need to edit this file.
+Imports `refrigeration.css` and defines the shared keyboard focus treatment. You rarely need to edit this file.
 
 ### Theme (dark/light mode)
 
@@ -362,8 +362,7 @@ The full navigation menu structure used by the hamburger/slide-out menu. Organis
 
 Build-level settings. You usually only need to touch this if changing the domain (which is imported from `site.ts` anyway). Includes:
 - Sitemap generation
-- Icon integration
-- Markdown plugins (reading time, image-to-figure conversion)
+- Astro 7's unified Markdown processor for reading time and image-to-figure plugins
 
 ---
 

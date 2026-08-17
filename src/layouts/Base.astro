@@ -73,7 +73,7 @@ const localBusinessSchema = {
     <meta name="theme-color" content="#0a0e17" />
 
     <!-- LocalBusiness structured data -->
-    <script type="application/ld+json" set:html={JSON.stringify(localBusinessSchema)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(localBusinessSchema)} />
 
     <!-- Per-page additional schema / meta -->
     <slot name="head" />
