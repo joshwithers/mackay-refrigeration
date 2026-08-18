@@ -1,0 +1,48 @@
+---
+interface Props {
+  active?: "dashboard" | "contacts" | "forms" | "new" | "settings";
+  role: "admin" | "staff" | "readonly";
+}
+
+const { active, role } = Astro.props;
+const links: Array<{
+  key: NonNullable<Props["active"]>;
+  label: string;
+  mobileLabel: string;
+  href: string;
+}> = [
+  { key: "dashboard", label: "Dashboard", mobileLabel: "Home", href: "/crm" },
+  {
+    key: "contacts",
+    label: "Contacts",
+    mobileLabel: "Contacts",
+    href: "/crm/contacts",
+  },
+  {
+    key: "forms",
+    label: "Forms & contracts",
+    mobileLabel: "Forms",
+    href: "/crm/forms",
+  },
+  { key: "new", label: "New enquiry", mobileLabel: "New", href: "/crm/new" },
+];
+---
+
+<nav class="crm-nav" aria-label="CRM navigation">
+  {
+    links.map((link) => (
+      <a class:list={{ active: active === link.key }} href={link.href}>
+        <span class="crm-nav-desktop-label">{link.label}</span>
+        <span class="crm-nav-mobile-label">{link.mobileLabel}</span>
+      </a>
+    ))
+  }
+  {
+    role === "admin" && (
+      <a class:list={{ active: active === "settings" }} href="/crm/settings">
+        <span class="crm-nav-desktop-label">Settings</span>
+        <span class="crm-nav-mobile-label">Settings</span>
+      </a>
+    )
+  }
+</nav>

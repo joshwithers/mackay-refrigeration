@@ -1,44 +1,91 @@
 ---
 import Base from "../../layouts/Base.astro";
+import CrmNav from "../../components/CrmNav.astro";
+import { displayStatus, formTitle, isDemoRecord } from "../../lib/crm-forms";
 import { runtimeEnv } from "../../server/db";
 
 export const prerender = false;
 
 if (!Astro.locals.user) return Astro.redirect("/crm/login");
 const current = runtimeEnv();
-const [newCount, unassignedCount, awaitingCount, dueCount, enquiries] =
-  await Promise.all([
-    current.DB.prepare(
-      `SELECT COUNT(*) AS count FROM enquiries WHERE status = 'new'`,
-    ).first<{ count: number }>(),
-    current.DB.prepare(
-      `SELECT COUNT(*) AS count FROM enquiries WHERE owner_id IS NULL AND status NOT IN ('complete', 'archived')`,
-    ).first<{ count: number }>(),
-    current.DB.prepare(
-      `SELECT COUNT(*) AS count FROM form_invites WHERE completed_at IS NULL AND revoked_at IS NULL AND expires_at > ?`,
-    )
-      .bind(new Date().toISOString())
-      .first<{ count: number }>(),
-    current.DB.prepare(
-      `SELECT COUNT(*) AS count FROM tasks WHERE completed_at IS NULL AND due_at <= ?`,
-    )
-      .bind(new Date().toISOString())
-      .first<{ count: number }>(),
-    current.DB.prepare(
-      `SELECT e.id, e.service, e.status, e.urgency, e.created_at, c.id AS contact_id, c.name, c.phone
-     FROM enquiries e JOIN contacts c ON c.id = e.contact_id
-     WHERE e.status NOT IN ('complete', 'archived') ORDER BY e.urgency = 'urgent' DESC, e.updated_at DESC LIMIT 20`,
-    ).all<{
+const [
+  newCount,
+  serviceAwaitingCount,
+  hireAwaitingCount,
+  reviewCount,
+  demoCount,
+  documents,
+  enquiries,
+] = await Promise.all([
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM enquiries WHERE status = 'new'`,
+  ).first<{ count: number }>(),
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM form_invites
+       WHERE form_slug = 'service-supply' AND completed_at IS NULL
+         AND revoked_at IS NULL AND expires_at > ?`,
+  )
+    .bind(new Date().toISOString())
+    .first<{ count: number }>(),
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM form_invites
+       WHERE form_slug = 'hire-contract' AND completed_at IS NULL
+         AND revoked_at IS NULL AND expires_at > ?`,
+  )
+    .bind(new Date().toISOString())
+    .first<{ count: number }>(),
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM form_submissions
+       WHERE form_slug IN ('service-supply', 'hire-contract')
+         AND workflow_status = 'received'`,
+  ).first<{ count: number }>(),
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM contacts WHERE id LIKE 'demo-%'`,
+  ).first<{ count: number }>(),
+  current.DB.prepare(
+    `SELECT * FROM (
+         SELECT i.id, 'invite' AS record_type, i.form_slug,
+                'awaiting customer' AS workflow_status, i.created_at,
+                i.expires_at AS due_at, c.id AS contact_id, c.name
+         FROM form_invites i JOIN contacts c ON c.id = i.contact_id
+         WHERE i.form_slug IN ('service-supply', 'hire-contract')
+           AND i.completed_at IS NULL AND i.revoked_at IS NULL
+           AND i.expires_at > ?
+         UNION ALL
+         SELECT s.id, 'submission' AS record_type, s.form_slug,
+                s.workflow_status, s.created_at, s.due_at,
+                c.id AS contact_id, c.name
+         FROM form_submissions s JOIN contacts c ON c.id = s.contact_id
+         WHERE s.form_slug IN ('service-supply', 'hire-contract')
+           AND s.workflow_status NOT IN ('complete', 'cancelled')
+       ) ORDER BY created_at DESC LIMIT 12`,
+  )
+    .bind(new Date().toISOString())
+    .all<{
       id: string;
-      service: string | null;
-      status: string;
-      urgency: string;
+      record_type: "invite" | "submission";
+      form_slug: string;
+      workflow_status: string;
       created_at: string;
+      due_at: string | null;
       contact_id: string;
       name: string;
-      phone: string | null;
     }>(),
-  ]);
+  current.DB.prepare(
+    `SELECT e.id, e.service, e.status, e.urgency, e.created_at, c.id AS contact_id, c.name, c.phone
+     FROM enquiries e JOIN contacts c ON c.id = e.contact_id
+     WHERE e.status NOT IN ('complete', 'archived') ORDER BY e.urgency = 'urgent' DESC, e.updated_at DESC LIMIT 20`,
+  ).all<{
+    id: string;
+    service: string | null;
+    status: string;
+    urgency: string;
+    created_at: string;
+    contact_id: string;
+    name: string;
+    phone: string | null;
+  }>(),
+]);
 
 const cards = [
   {
@@ -47,19 +94,19 @@ const cards = [
     href: "/crm/contacts",
   },
   {
-    label: "Unassigned",
-    value: unassignedCount?.count ?? 0,
-    href: "/crm/contacts",
+    label: "Service forms awaiting",
+    value: serviceAwaitingCount?.count ?? 0,
+    href: "/crm/forms?type=service-supply&state=awaiting",
   },
   {
-    label: "Forms awaiting completion",
-    value: awaitingCount?.count ?? 0,
-    href: "/crm/contacts",
+    label: "Hire contracts awaiting",
+    value: hireAwaitingCount?.count ?? 0,
+    href: "/crm/forms?type=hire-contract&state=awaiting",
   },
   {
-    label: "Follow-ups due",
-    value: dueCount?.count ?? 0,
-    href: "/crm/contacts",
+    label: "Forms needing review",
+    value: reviewCount?.count ?? 0,
+    href: "/crm/forms?state=received",
   },
 ];
 ---
@@ -75,7 +122,8 @@ const cards = [
         <div class="hero-badge"><span class="pulse"></span> Operations</div>
         <h1>
           Good morning, <span class="cold"
-            >{Astro.locals.user.name.split(" ")[0]}</span>
+            >{Astro.locals.user.name.split(" ")[0]}</span
+          >
         </h1>
         <p class="crm-muted">
           Here’s what needs attention across Mackay Refrigeration.
@@ -89,16 +137,19 @@ const cards = [
       </div>
     </header>
 
-    <nav class="crm-nav" aria-label="CRM navigation">
-      <a class="active" href="/crm">Dashboard</a>
-      <a href="/crm/contacts">Contacts</a>
-      <a href="/crm/new">New enquiry</a>
-      {
-        Astro.locals.user.role === "admin" && (
-          <a href="/crm/settings">Settings</a>
-        )
-      }
-    </nav>
+    <CrmNav active="dashboard" role={Astro.locals.user.role} />
+
+    {
+      Boolean(demoCount?.count) && (
+        <aside class="crm-demo-banner" role="note">
+          <strong>Demo workspace</strong>
+          <span>
+            Celebrity names below are fictional demonstration records. Contact
+            details are placeholders and no real customer data is used.
+          </span>
+        </aside>
+      )
+    }
 
     <section class="crm-stat-grid" aria-label="CRM summary">
       {
@@ -108,6 +159,67 @@ const cards = [
             <strong>{card.value}</strong>
           </a>
         ))
+      }
+    </section>
+
+    <section class="crm-panel">
+      <div class="crm-panel-heading">
+        <div>
+          <div class="crm-kicker">Forms &amp; contracts</div>
+          <h2>Operational work</h2>
+        </div>
+        <a class="crm-text-link" href="/crm/forms">View workstream →</a>
+      </div>
+      {
+        documents.results.length ? (
+          <div class="crm-list">
+            {documents.results.map((document) => (
+              <a
+                class="crm-list-row"
+                href={
+                  document.record_type === "submission"
+                    ? `/crm/forms/submissions/${document.id}`
+                    : `/crm/contacts/${document.contact_id}`
+                }
+              >
+                <div class="crm-list-main">
+                  <strong>
+                    {formTitle(document.form_slug)}
+                    {isDemoRecord(document.contact_id) && (
+                      <span class="crm-demo-pill">Demo</span>
+                    )}
+                  </strong>
+                  <span>
+                    {document.name} ·{" "}
+                    {document.record_type === "invite"
+                      ? `Sent ${new Date(document.created_at).toLocaleDateString("en-AU")}`
+                      : `Received ${new Date(document.created_at).toLocaleDateString("en-AU")}`}
+                  </span>
+                </div>
+                <div class="crm-list-meta">
+                  <span
+                    class:list={[
+                      "crm-status",
+                      `status-${document.workflow_status.replaceAll(" ", "-")}`,
+                    ]}
+                  >
+                    {displayStatus(document.workflow_status)}
+                  </span>
+                  {document.due_at && (
+                    <span>
+                      Due{" "}
+                      {new Date(document.due_at).toLocaleDateString("en-AU")}
+                    </span>
+                  )}
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="crm-empty">
+            No service forms or hire contracts need attention.
+          </div>
+        )
       }
     </section>
 

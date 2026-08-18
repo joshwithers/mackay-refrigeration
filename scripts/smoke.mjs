@@ -108,15 +108,17 @@ for (const [from, to] of [
   );
 }
 
-const dashboard = await request("/crm", { redirect: "manual" });
-check(
-  [301, 302, 303, 307, 308].includes(dashboard.status),
-  `/crm returned ${dashboard.status} instead of redirecting`,
-);
-check(
-  dashboard.headers.get("location") === "/crm/login",
-  `/crm redirected to ${dashboard.headers.get("location")} instead of /crm/login`,
-);
+for (const privatePath of ["/crm", "/crm/forms", "/crm/contacts"]) {
+  const response = await request(privatePath, { redirect: "manual" });
+  check(
+    [301, 302, 303, 307, 308].includes(response.status),
+    `${privatePath} returned ${response.status} instead of redirecting`,
+  );
+  check(
+    response.headers.get("location") === "/crm/login",
+    `${privatePath} redirected to ${response.headers.get("location")} instead of /crm/login`,
+  );
+}
 
 const secureForm = await expectPage(
   "/forms/service-supply",

@@ -1,6 +1,8 @@
 ---
 import Base from "../../../layouts/Base.astro";
+import CrmNav from "../../../components/CrmNav.astro";
 import { actions } from "astro:actions";
+import { displayStatus, formTitle, isDemoRecord } from "../../../lib/crm-forms";
 import { runtimeEnv } from "../../../server/db";
 
 export const prerender = false;
@@ -49,7 +51,8 @@ const [enquiries, invites, submissions, notes, activity] = await Promise.all([
       created_at: string;
     }>(),
   current.DB.prepare(
-    `SELECT id, form_slug, form_version, enquiry_id, created_at FROM form_submissions WHERE contact_id = ? ORDER BY created_at DESC`,
+    `SELECT id, form_slug, form_version, enquiry_id, workflow_status, due_at, created_at
+     FROM form_submissions WHERE contact_id = ? ORDER BY created_at DESC`,
   )
     .bind(id)
     .all<{
@@ -57,6 +60,8 @@ const [enquiries, invites, submissions, notes, activity] = await Promise.all([
       form_slug: string;
       form_version: string;
       enquiry_id: string | null;
+      workflow_status: string;
+      due_at: string | null;
       created_at: string;
     }>(),
   current.DB.prepare(
@@ -113,6 +118,20 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
       </div>
     </header>
 
+    <CrmNav active="contacts" role={Astro.locals.user.role} />
+
+    {
+      isDemoRecord(contact.id) && (
+        <aside class="crm-demo-banner" role="note">
+          <strong>Fictional demo customer</strong>
+          <span>
+            This celebrity name and all contact, enquiry and form information on
+            this record are placeholders for the client demonstration.
+          </span>
+        </aside>
+      )
+    }
+
     <section class="crm-contact-grid">
       <div class="crm-main-column">
         <div class="crm-panel">
@@ -120,7 +139,8 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
             <div>
               <div class="crm-kicker">Enquiries</div><h2>Work to follow up</h2>
             </div><a class="crm-text-link" href="/crm/new"
-              >+ Add phone enquiry</a>
+              >+ Add phone enquiry</a
+            >
           </div>
           {
             enquiries.results.length ? (
@@ -259,7 +279,11 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
           </div>
           {
             sendResult?.data?.success && (
-              <p class="crm-success">Form invitation queued.</p>
+              <p class="crm-success">
+                {sendResult.data.demo
+                  ? "Demo invitation prepared. No email was sent."
+                  : "Form invitation queued."}
+              </p>
             )
           }
           {
@@ -281,7 +305,7 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
                   }) => (
                     <div class="crm-list-row">
                       <div class="crm-list-main">
-                        <strong>{invite.form_slug}</strong>
+                        <strong>{formTitle(invite.form_slug)}</strong>
                         <span>
                           Expires{" "}
                           {new Date(invite.expires_at).toLocaleDateString(
@@ -313,11 +337,16 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
                     form_slug: string;
                     form_version: string;
                     enquiry_id: string | null;
+                    workflow_status: string;
+                    due_at: string | null;
                     created_at: string;
                   }) => (
-                    <div class="crm-list-row">
+                    <a
+                      class="crm-list-row"
+                      href={`/crm/forms/submissions/${submission.id}`}
+                    >
                       <div class="crm-list-main">
-                        <strong>{submission.form_slug}</strong>
+                        <strong>{formTitle(submission.form_slug)}</strong>
                         <span>
                           Version {submission.form_version} ·{" "}
                           {new Date(submission.created_at).toLocaleDateString(
@@ -326,9 +355,24 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
                         </span>
                       </div>
                       <div class="crm-list-meta">
-                        <span class="crm-status status-complete">Received</span>
+                        <span
+                          class:list={[
+                            "crm-status",
+                            `status-${submission.workflow_status.replaceAll(" ", "-")}`,
+                          ]}
+                        >
+                          {displayStatus(submission.workflow_status)}
+                        </span>
+                        {submission.due_at && (
+                          <span>
+                            Due{" "}
+                            {new Date(submission.due_at).toLocaleDateString(
+                              "en-AU",
+                            )}
+                          </span>
+                        )}
                       </div>
-                    </div>
+                    </a>
                   ),
                 )}
               </div>

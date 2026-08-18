@@ -1,0 +1,275 @@
+---
+import Base from "../../../../layouts/Base.astro";
+import CrmNav from "../../../../components/CrmNav.astro";
+import { actions } from "astro:actions";
+import {
+  displayStatus,
+  formTitle,
+  formWorkflowMeta,
+  isDemoRecord,
+  isManagedFormSlug,
+} from "../../../../lib/crm-forms";
+import { runtimeEnv } from "../../../../server/db";
+
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+
+const submissionId = Astro.params.id;
+const current = runtimeEnv();
+const submission = await current.DB.prepare(
+  `SELECT s.id, s.form_slug, s.form_version, s.form_snapshot, s.values_json,
+          s.workflow_status, s.due_at, s.reviewed_at, s.created_at,
+          c.id AS contact_id, c.name, c.email, c.phone,
+          e.id AS enquiry_id, e.service AS enquiry_service,
+          su.name AS reviewed_by_name
+   FROM form_submissions s
+   JOIN contacts c ON c.id = s.contact_id
+   LEFT JOIN enquiries e ON e.id = s.enquiry_id
+   LEFT JOIN staff_users su ON su.id = s.reviewed_by
+   WHERE s.id = ?`,
+)
+  .bind(submissionId)
+  .first<{
+    id: string;
+    form_slug: string;
+    form_version: string;
+    form_snapshot: string;
+    values_json: string;
+    workflow_status: string;
+    due_at: string | null;
+    reviewed_at: string | null;
+    reviewed_by_name: string | null;
+    created_at: string;
+    contact_id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    enquiry_id: string | null;
+    enquiry_service: string | null;
+  }>();
+
+if (!submission || !isManagedFormSlug(submission.form_slug)) {
+  return Astro.redirect("/crm/forms");
+}
+
+type SnapshotField = {
+  id: string;
+  label: string;
+  type?: string;
+  options?: { label: string; value: string }[];
+};
+type SnapshotSection = {
+  title: string;
+  description?: string;
+  fields: SnapshotField[];
+};
+type Snapshot = { title?: string; sections?: SnapshotSection[] };
+
+let snapshot: Snapshot = {};
+let values: Record<string, unknown> = {};
+try {
+  snapshot = JSON.parse(submission.form_snapshot) as Snapshot;
+  values = JSON.parse(submission.values_json) as Record<string, unknown>;
+} catch {
+  // Historical rows remain accessible even if a snapshot is malformed.
+}
+
+function displayValue(field: SnapshotField): string {
+  const raw = values[field.id];
+  const list = Array.isArray(raw) ? raw.map(String) : [String(raw ?? "")];
+  if (!list.some(Boolean)) return "Not provided";
+  if (field.type === "acceptance")
+    return list[0] === "yes" ? "Accepted" : "Not accepted";
+  if (field.options?.length) {
+    const labels = new Map(
+      field.options.map((option) => [option.value, option.label]),
+    );
+    return list.map((value) => labels.get(value) || value).join(", ");
+  }
+  return list.join(", ");
+}
+
+const meta = formWorkflowMeta[submission.form_slug];
+const updateResult = Astro.getActionResult(actions.staff.updateFormWorkflow);
+---
+
+<Base
+  title={`${formTitle(submission.form_slug)} — CRM`}
+  description="Review a completed Mackay Refrigeration customer form."
+  noindex
+>
+  <div class="crm-shell">
+    <div class="crm-breadcrumb">
+      <a href="/crm">CRM</a> / <a href="/crm/forms">Forms &amp; contracts</a> / {
+        submission.name
+      }
+    </div>
+    <header class="crm-header crm-contact-header">
+      <div>
+        <div class="hero-badge">
+          <span class="pulse"></span>
+          {meta.shortTitle}
+        </div>
+        <h1>{snapshot.title || meta.title}</h1>
+        <p class="crm-muted">
+          Submitted by <a
+            class="crm-inline-link"
+            href={`/crm/contacts/${submission.contact_id}`}>{submission.name}</a
+          >
+          on {new Date(submission.created_at).toLocaleString("en-AU")}.
+        </p>
+      </div>
+      <span
+        class:list={[
+          "crm-status crm-status-large",
+          `status-${submission.workflow_status.replaceAll(" ", "-")}`,
+        ]}
+      >
+        {displayStatus(submission.workflow_status)}
+      </span>
+    </header>
+
+    <CrmNav active="forms" role={Astro.locals.user.role} />
+
+    {
+      isDemoRecord(submission.contact_id) && (
+        <aside class="crm-demo-banner" role="note">
+          <strong>Fictional demo record</strong>
+          <span>
+            This celebrity name and every answer below are demonstration data
+            only.
+          </span>
+        </aside>
+      )
+    }
+
+    <section class="crm-document-grid">
+      <div class="crm-main-column">
+        {
+          (snapshot.sections || []).map((section) => (
+            <section class="crm-panel crm-answer-section">
+              <div class="crm-panel-heading">
+                <div>
+                  <>
+                    <div class="crm-kicker">Recorded answers</div>
+                    <h2>{section.title}</h2>
+                  </>
+                </div>
+              </div>
+              {section.description && (
+                <p class="crm-muted">{section.description}</p>
+              )}
+              <dl class="crm-answer-grid">
+                {section.fields.map((field) => (
+                  <div
+                    class:list={{
+                      "crm-answer-wide": field.type === "textarea",
+                    }}
+                  >
+                    <dt>{field.label}</dt>
+                    <dd>{displayValue(field)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))
+        }
+      </div>
+
+      <aside class="crm-side-column">
+        <section class="crm-panel crm-workflow-panel">
+          <div class="crm-kicker">Staff workflow</div>
+          <h2>Progress this record</h2>
+          {
+            Astro.locals.user.role !== "readonly" ? (
+              <form
+                method="POST"
+                action={actions.staff.updateFormWorkflow}
+                class="crm-form"
+              >
+                <input
+                  type="hidden"
+                  name="submissionId"
+                  value={submission.id}
+                />
+                <label class="form-label" for="workflow-status">
+                  Status
+                </label>
+                <select class="form-select" id="workflow-status" name="status">
+                  {meta.statuses.map((status) => (
+                    <option
+                      value={status}
+                      selected={status === submission.workflow_status}
+                    >
+                      {displayStatus(status)}
+                    </option>
+                  ))}
+                </select>
+                <label class="form-label" for="workflow-due">
+                  {meta.dueLabel}
+                </label>
+                <input
+                  class="form-input"
+                  id="workflow-due"
+                  name="dueAt"
+                  type="date"
+                  value={submission.due_at?.slice(0, 10) || ""}
+                />
+                <button class="cta-btn" type="submit">
+                  Save workflow →
+                </button>
+              </form>
+            ) : (
+              <p class="crm-muted">
+                Read-only access cannot change workflow status.
+              </p>
+            )
+          }
+          {
+            updateResult?.data?.success && (
+              <p class="crm-success" role="status">
+                Workflow updated.
+              </p>
+            )
+          }
+          {
+            updateResult?.error && (
+              <p class="crm-error" role="alert">
+                The workflow could not be updated.
+              </p>
+            )
+          }
+        </section>
+
+        <section class="crm-panel">
+          <div class="crm-kicker">Record details</div>
+          <dl class="crm-details">
+            <div>
+              <dt>Customer</dt><dd>
+                <a href={`/crm/contacts/${submission.contact_id}`}
+                  >{submission.name}</a>
+              </dd>
+            </div>
+            <div>
+              <dt>Email</dt><dd>{submission.email || "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt>Phone</dt><dd>{submission.phone || "Not recorded"}</dd>
+            </div>
+            <div>
+              <dt>Related work</dt><dd>
+                {submission.enquiry_service || "General enquiry"}
+              </dd>
+            </div>
+            <div><dt>Form version</dt><dd>{submission.form_version}</dd></div>
+            <div>
+              <dt>Reviewed by</dt><dd>
+                {submission.reviewed_by_name || "Awaiting review"}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      </aside>
+    </section>
+  </div>
+</Base>

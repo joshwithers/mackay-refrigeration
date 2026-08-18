@@ -1,6 +1,12 @@
 import { ActionError, defineAction } from "astro:actions";
 import { getEntry } from "astro:content";
 import { z } from "astro/zod";
+import {
+  displayStatus,
+  formTitle,
+  formWorkflowMeta,
+  isManagedFormSlug,
+} from "../lib/crm-forms";
 import { fieldMapFor, fieldValue, firstValue, hasValue } from "../lib/forms";
 import {
   hashIp,
@@ -46,6 +52,23 @@ const statusInput = z.object({
     "complete",
     "archived",
   ]),
+});
+const formWorkflowInput = z.object({
+  submissionId: z.string().min(1),
+  status: z.enum([
+    "received",
+    "reviewed",
+    "ready to schedule",
+    "scheduled",
+    "approved",
+    "active",
+    "return due",
+    "complete",
+    "cancelled",
+  ]),
+  dueAt: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
+    .optional(),
 });
 const notificationRuleInput = z.object({
   eventType: z.enum(["form_submitted", "enquiry_created"]),
@@ -730,34 +753,40 @@ export const server = {
         const inviteTime = nowIso();
         const enquiryId = input.enquiryId ?? null;
         await current.DB.batch([
-          current.DB
-            .prepare(
-              `UPDATE form_invites SET revoked_at = ?
+          current.DB.prepare(
+            `UPDATE form_invites SET revoked_at = ?
                WHERE form_slug = ? AND contact_id = ? AND enquiry_id IS ?
                  AND completed_at IS NULL AND revoked_at IS NULL`,
-            )
-            .bind(inviteTime, input.formType, contact.id, enquiryId),
-          current.DB
-            .prepare(
-              `INSERT INTO form_invites (id, form_slug, contact_id, enquiry_id, token_hash, sent_by, expires_at, created_at)
+          ).bind(inviteTime, input.formType, contact.id, enquiryId),
+          current.DB.prepare(
+            `INSERT INTO form_invites (id, form_slug, contact_id, enquiry_id, token_hash, sent_by, expires_at, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            )
-            .bind(
-              inviteId,
-              input.formType,
-              contact.id,
-              enquiryId,
-              await hashSecret(token),
-              user.id,
-              expiresAt,
-              inviteTime,
-            ),
+          ).bind(
+            inviteId,
+            input.formType,
+            contact.id,
+            enquiryId,
+            await hashSecret(token),
+            user.id,
+            expiresAt,
+            inviteTime,
+          ),
         ]);
         const link = `${publicBaseUrl(context.request)}/forms/${input.formType}?token=${encodeURIComponent(token)}`;
         const title =
           input.formType === "hire-contract"
             ? "Hire contract"
             : "Service supply form";
+        if (contact.id.startsWith("demo-")) {
+          await recordActivity({
+            contactId: contact.id,
+            enquiryId: input.enquiryId,
+            actorId: user.id,
+            eventType: "form_invited",
+            summary: `Demo ${title.toLowerCase()} prepared; no email sent`,
+          });
+          return { success: true, inviteId, demo: true };
+        }
         const communicationId = await createCommunication({
           contactId: contact.id,
           enquiryId: input.enquiryId,
@@ -864,6 +893,82 @@ export const server = {
           actorId: user.id,
           eventType: "status_changed",
           summary: `Enquiry moved to ${input.status}`,
+        });
+        return { success: true };
+      },
+    }),
+    updateFormWorkflow: defineAction({
+      accept: "form",
+      input: formWorkflowInput,
+      handler: async (input, context) => {
+        const user = context.locals.user;
+        if (!user || user.role === "readonly")
+          throw new ActionError({
+            code: "UNAUTHORIZED",
+            message: "Sign in required.",
+          });
+        const current = runtimeEnv();
+        const submission = await current.DB.prepare(
+          `SELECT form_slug, contact_id, enquiry_id
+           FROM form_submissions WHERE id = ?`,
+        )
+          .bind(input.submissionId)
+          .first<{
+            form_slug: string;
+            contact_id: string | null;
+            enquiry_id: string | null;
+          }>();
+        if (!submission || !isManagedFormSlug(submission.form_slug)) {
+          throw new ActionError({
+            code: "BAD_REQUEST",
+            message: "That form submission no longer exists.",
+          });
+        }
+        if (
+          !formWorkflowMeta[submission.form_slug].statuses.includes(
+            input.status,
+          )
+        ) {
+          throw new ActionError({
+            code: "BAD_REQUEST",
+            message: "That status is not available for this form type.",
+          });
+        }
+        const updatedAt = nowIso();
+        await current.DB.prepare(
+          `UPDATE form_submissions
+           SET workflow_status = ?, due_at = ?,
+               reviewed_at = CASE
+                 WHEN ? = 'received' THEN NULL
+                 ELSE COALESCE(reviewed_at, ?)
+               END,
+               reviewed_by = CASE
+                 WHEN ? = 'received' THEN NULL
+                 ELSE COALESCE(reviewed_by, ?)
+               END
+           WHERE id = ?`,
+        )
+          .bind(
+            input.status,
+            input.dueAt ? `${input.dueAt}T23:59:59.000Z` : null,
+            input.status,
+            updatedAt,
+            input.status,
+            user.id,
+            input.submissionId,
+          )
+          .run();
+        await recordActivity({
+          contactId: submission.contact_id ?? undefined,
+          enquiryId: submission.enquiry_id ?? undefined,
+          actorId: user.id,
+          eventType: "form_workflow_updated",
+          summary: `${formTitle(submission.form_slug)} moved to ${displayStatus(input.status)}`,
+          metadata: {
+            submissionId: input.submissionId,
+            status: input.status,
+            dueAt: input.dueAt || null,
+          },
         });
         return { success: true };
       },

@@ -1,5 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
+import CrmNav from "../../components/CrmNav.astro";
 import { actions } from "astro:actions";
 import { runtimeEnv } from "../../server/db";
 
@@ -44,6 +45,8 @@ const removeResult = Astro.getActionResult(
         <a class="crm-secondary-btn" href="/crm">Back to dashboard</a>
       </div>
     </header>
+
+    <CrmNav active="settings" role={Astro.locals.user.role} />
 
     <section class="crm-settings-grid">
       <div class="crm-panel">

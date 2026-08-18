@@ -1,5 +1,6 @@
 ---
 import Base from "../../layouts/Base.astro";
+import CrmNav from "../../components/CrmNav.astro";
 import { actions } from "astro:actions";
 
 export const prerender = false;
@@ -15,6 +16,7 @@ const success = result?.data?.success === true;
 >
   <div class="crm-shell crm-narrow">
     <div class="crm-breadcrumb"><a href="/crm">CRM</a> / New phone enquiry</div>
+    <CrmNav active="new" role={Astro.locals.user.role} />
     <div class="crm-panel">
       <div class="crm-panel-heading">
         <div>

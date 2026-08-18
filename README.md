@@ -91,6 +91,8 @@ Run these from the project root folder:
 | `npm run lint:check`   | Check ESLint rules without changing files                       |
 | `npm run db:migrate:local` | Apply D1 migrations to the local Wrangler database          |
 | `npm run db:migrate:remote` | Apply D1 migrations to the configured Cloudflare database |
+| `npm run db:demo:local` | Load the fictional celebrity demonstration records locally |
+| `npm run db:demo:remove:local` | Remove all locally seeded demonstration records |
 | `npm run deploy`       | Build and deploy the site Worker and email queue Worker         |
 
 ---
@@ -387,6 +389,8 @@ All customer forms submit to the Cloudflare Worker through Astro Actions and are
 - `/service-supply` and `/forms/service-supply` are invitation-backed service forms.
 - `/hire-contract` and `/forms/hire-contract` are invitation-backed hire agreements. The submitted Markdown version, acceptance values and timestamp are retained with the record.
 - Staff use `/crm` to add phone enquiries, find contacts, update enquiry status, add notes and send either form as a magic-link invitation.
+- `/crm/forms` is the operational forms and contracts queue. It separates service supply forms from hire contracts, shows forms still waiting on customers, flags new submissions for review and tracks type-specific lifecycle states and due dates.
+- `/crm/forms/submissions/:id` displays the immutable submitted answers and lets staff move a service form through review and scheduling, or a hire contract through approval, active hire, return-due and completion stages.
 
 The three form definitions live in `src/content/forms/*.md`. Content staff can edit labels, options, required fields and explanatory copy in Markdown. The version in frontmatter is stored with every submission so later edits do not rewrite historical records.
 
@@ -421,6 +425,8 @@ Deployment is Cloudflare Workers rather than Pages. The Workers are deployed in 
 6. Deploy with `npm run deploy`. The script removes preview-only bindings from Astro's generated production config, deploys the site Worker, and then deploys `wrangler.email.jsonc` with `workers/email-consumer.ts`.
 
 For local development, copy `.dev.vars.example` to `.dev.vars`, apply `npm run db:migrate:local`, seed a demo staff user, and run `npm run dev`. Local Queue messages stay queued unless an email Worker is run separately; the local form/database flow can still be exercised end to end.
+
+For a client demonstration, `npm run db:demo:local` loads four clearly marked fictional records using celebrity names and non-deliverable `.invalid` email addresses. It is safe to rerun and replaces only records whose IDs start with `demo-`. Sending a form from one of these records creates the on-screen invitation state but deliberately sends no email. Remove the complete demo dataset with `npm run db:demo:remove:local`.
 
 ### Important deployment settings
 - **Canonical domain:** `src/config/site.ts` (`domain`) and `CRM_BASE_URL`

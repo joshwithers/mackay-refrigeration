@@ -1,0 +1,311 @@
+---
+import Base from "../../../layouts/Base.astro";
+import CrmNav from "../../../components/CrmNav.astro";
+import {
+  displayStatus,
+  formTitle,
+  isDemoRecord,
+} from "../../../lib/crm-forms";
+import { runtimeEnv } from "../../../server/db";
+
+export const prerender = false;
+if (!Astro.locals.user) return Astro.redirect("/crm/login");
+
+const typeFilter = Astro.url.searchParams.get("type") || "all";
+const stateFilter = Astro.url.searchParams.get("state") || "all";
+const current = runtimeEnv();
+const now = new Date().toISOString();
+
+const [summary, invites, submissions, demoCount] = await Promise.all([
+  current.DB.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM form_invites
+        WHERE form_slug = 'service-supply' AND completed_at IS NULL
+          AND revoked_at IS NULL AND expires_at > ?) AS service_awaiting,
+       (SELECT COUNT(*) FROM form_invites
+        WHERE form_slug = 'hire-contract' AND completed_at IS NULL
+          AND revoked_at IS NULL AND expires_at > ?) AS hire_awaiting,
+       (SELECT COUNT(*) FROM form_submissions
+        WHERE form_slug IN ('service-supply', 'hire-contract')
+          AND workflow_status = 'received') AS needs_review,
+       (SELECT COUNT(*) FROM form_submissions
+        WHERE form_slug = 'hire-contract'
+          AND workflow_status IN ('active', 'return due')) AS active_hires`,
+  )
+    .bind(now, now)
+    .first<{
+      service_awaiting: number;
+      hire_awaiting: number;
+      needs_review: number;
+      active_hires: number;
+    }>(),
+  current.DB.prepare(
+    `SELECT i.id, i.form_slug, i.created_at, i.expires_at,
+            c.id AS contact_id, c.name, c.email
+     FROM form_invites i JOIN contacts c ON c.id = i.contact_id
+     WHERE i.form_slug IN ('service-supply', 'hire-contract')
+       AND i.completed_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?
+     ORDER BY i.created_at DESC LIMIT 100`,
+  )
+    .bind(now)
+    .all<{
+      id: string;
+      form_slug: string;
+      created_at: string;
+      expires_at: string;
+      contact_id: string;
+      name: string;
+      email: string | null;
+    }>(),
+  current.DB.prepare(
+    `SELECT s.id, s.form_slug, s.workflow_status, s.created_at, s.due_at,
+            s.reviewed_at, c.id AS contact_id, c.name, c.email
+     FROM form_submissions s JOIN contacts c ON c.id = s.contact_id
+     WHERE s.form_slug IN ('service-supply', 'hire-contract')
+     ORDER BY
+       s.workflow_status = 'received' DESC,
+       CASE WHEN s.due_at IS NULL THEN 1 ELSE 0 END,
+       s.due_at ASC,
+       s.created_at DESC
+     LIMIT 100`,
+  ).all<{
+    id: string;
+    form_slug: string;
+    workflow_status: string;
+    created_at: string;
+    due_at: string | null;
+    reviewed_at: string | null;
+    contact_id: string;
+    name: string;
+    email: string | null;
+  }>(),
+  current.DB.prepare(
+    `SELECT COUNT(*) AS count FROM contacts WHERE id LIKE 'demo-%'`,
+  ).first<{ count: number }>(),
+]);
+
+const filteredInvites = invites.results.filter(
+  (invite) =>
+    (typeFilter === "all" || invite.form_slug === typeFilter) &&
+    (stateFilter === "all" || stateFilter === "awaiting"),
+);
+const filteredSubmissions = submissions.results.filter(
+  (submission) =>
+    (typeFilter === "all" || submission.form_slug === typeFilter) &&
+    stateFilter !== "awaiting" &&
+    (stateFilter === "all" || submission.workflow_status === stateFilter),
+);
+
+const filters = [
+  {
+    label: "All work",
+    href: "/crm/forms",
+    active: typeFilter === "all" && stateFilter === "all",
+  },
+  {
+    label: "Awaiting customer",
+    href: "/crm/forms?state=awaiting",
+    active: stateFilter === "awaiting" && typeFilter === "all",
+  },
+  {
+    label: "Needs review",
+    href: "/crm/forms?state=received",
+    active: stateFilter === "received",
+  },
+  {
+    label: "Service forms",
+    href: "/crm/forms?type=service-supply",
+    active: typeFilter === "service-supply" && stateFilter === "all",
+  },
+  {
+    label: "Hire contracts",
+    href: "/crm/forms?type=hire-contract",
+    active: typeFilter === "hire-contract" && stateFilter === "all",
+  },
+];
+---
+
+<Base
+  title="Forms and contracts — CRM"
+  description="Mackay Refrigeration service forms and hire contracts."
+  noindex
+>
+  <div class="crm-shell">
+    <header class="crm-header crm-header-compact">
+      <div>
+        <div class="hero-badge"><span class="pulse"></span> Workstreams</div>
+        <h1>Forms &amp; <span class="cold">contracts</span></h1>
+        <p class="crm-muted">
+          See what customers still need to complete, review received details,
+          and progress work through to completion.
+        </p>
+      </div>
+      <a class="cta-btn" href="/crm/contacts">Find a customer →</a>
+    </header>
+
+    <CrmNav active="forms" role={Astro.locals.user.role} />
+
+    {
+      Boolean(demoCount?.count) && (
+        <aside class="crm-demo-banner" role="note">
+          <strong>Demo records are switched on</strong>
+          <span>
+            Celebrity names and all associated details are fictional
+            placeholders for this client demonstration.
+          </span>
+        </aside>
+      )
+    }
+
+    <section
+      class="crm-stat-grid crm-form-stat-grid"
+      aria-label="Forms summary"
+    >
+      <a
+        class="crm-stat-card"
+        href="/crm/forms?type=service-supply&state=awaiting"
+      >
+        <span>Service forms awaiting</span><strong
+          >{summary?.service_awaiting ?? 0}</strong
+        >
+      </a>
+      <a
+        class="crm-stat-card"
+        href="/crm/forms?type=hire-contract&state=awaiting"
+      >
+        <span>Hire contracts awaiting</span><strong
+          >{summary?.hire_awaiting ?? 0}</strong
+        >
+      </a>
+      <a class="crm-stat-card" href="/crm/forms?state=received">
+        <span>Needs staff review</span><strong
+          >{summary?.needs_review ?? 0}</strong
+        >
+      </a>
+      <a
+        class="crm-stat-card"
+        href="/crm/forms?type=hire-contract&state=active"
+      >
+        <span>Active hires</span><strong>{summary?.active_hires ?? 0}</strong>
+      </a>
+    </section>
+
+    <nav class="crm-filter-nav" aria-label="Filter forms and contracts">
+      {
+        filters.map((filter) => (
+          <a class:list={{ active: filter.active }} href={filter.href}>
+            {filter.label}
+          </a>
+        ))
+      }
+    </nav>
+
+    {
+      stateFilter !== "received" && stateFilter !== "active" && (
+        <section class="crm-panel">
+          <div class="crm-panel-heading">
+            <div>
+              <div class="crm-kicker">Waiting on customers</div>
+              <h2>Sent, not yet completed</h2>
+            </div>
+            <span class="crm-panel-count">{filteredInvites.length}</span>
+          </div>
+          {filteredInvites.length ? (
+            <div class="crm-list">
+              {filteredInvites.map((invite) => (
+                <a
+                  class="crm-list-row"
+                  href={`/crm/contacts/${invite.contact_id}`}
+                >
+                  <div class="crm-list-main">
+                    <strong>
+                      {formTitle(invite.form_slug)}
+                      {isDemoRecord(invite.contact_id) && (
+                        <span class="crm-demo-pill">Demo</span>
+                      )}
+                    </strong>
+                    <span>
+                      {invite.name} · {invite.email || "No email recorded"}
+                    </span>
+                  </div>
+                  <div class="crm-list-meta">
+                    <span class="crm-status status-awaiting-customer">
+                      Awaiting customer
+                    </span>
+                    <span>
+                      Expires{" "}
+                      {new Date(invite.expires_at).toLocaleDateString("en-AU")}
+                    </span>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div class="crm-empty">
+              No matching forms are waiting on a customer.
+            </div>
+          )}
+        </section>
+      )
+    }
+
+    {
+      stateFilter !== "awaiting" && (
+        <section class="crm-panel">
+          <div class="crm-panel-heading">
+            <div>
+              <div class="crm-kicker">Received work</div>
+              <h2>Review and progress</h2>
+            </div>
+            <span class="crm-panel-count">{filteredSubmissions.length}</span>
+          </div>
+          {filteredSubmissions.length ? (
+            <div class="crm-list">
+              {filteredSubmissions.map((submission) => (
+                <a
+                  class="crm-list-row"
+                  href={`/crm/forms/submissions/${submission.id}`}
+                >
+                  <div class="crm-list-main">
+                    <strong>
+                      {formTitle(submission.form_slug)}
+                      {isDemoRecord(submission.contact_id) && (
+                        <span class="crm-demo-pill">Demo</span>
+                      )}
+                    </strong>
+                    <span>
+                      {submission.name} · Received{" "}
+                      {new Date(submission.created_at).toLocaleDateString(
+                        "en-AU",
+                      )}
+                    </span>
+                  </div>
+                  <div class="crm-list-meta">
+                    <span
+                      class:list={[
+                        "crm-status",
+                        `status-${submission.workflow_status.replaceAll(" ", "-")}`,
+                      ]}
+                    >
+                      {displayStatus(submission.workflow_status)}
+                    </span>
+                    {submission.due_at && (
+                      <span>
+                        Due{" "}
+                        {new Date(submission.due_at).toLocaleDateString(
+                          "en-AU",
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div class="crm-empty">No received forms match this view.</div>
+          )}
+        </section>
+      )
+    }
+  </div>
+</Base>

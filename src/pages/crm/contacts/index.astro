@@ -1,5 +1,6 @@
 ---
 import Base from "../../../layouts/Base.astro";
+import CrmNav from "../../../components/CrmNav.astro";
 import { runtimeEnv } from "../../../server/db";
 
 export const prerender = false;
@@ -47,6 +48,7 @@ const contacts = query
       <div><div class="crm-kicker">Customer records</div><h1>Contacts</h1></div>
       <a class="cta-btn" href="/crm/new">+ Phone enquiry</a>
     </header>
+    <CrmNav active="contacts" role={Astro.locals.user.role} />
     <form class="crm-search" method="GET">
       <label class="sr-only" for="contact-search">Search contacts</label>
       <input
