@@ -52,10 +52,16 @@ const removeResult = Astro.getActionResult(
       <div class="crm-panel">
         <div class="crm-panel-heading">
           <div>
-            <div class="crm-kicker">Add recipient</div><h2>
-              Send notifications to
-            </h2>
+            <div class="crm-kicker">Add a rule</div><h2>Route an alert</h2>
           </div>
+        </div>
+        <div class="crm-settings-explainer">
+          <strong>How notification rules work</strong>
+          <p>
+            Choose an event and an inbox. The CRM emails that inbox every time
+            the event happens. Add the same address once for each alert type it
+            should receive.
+          </p>
         </div>
         <form
           method="POST"
@@ -80,7 +86,7 @@ const removeResult = Astro.getActionResult(
             placeholder="staff@example.com"
           />
           <button class="cta-btn" type="submit"
-            >Save recipient <span aria-hidden="true">→</span></button
+            >Add notification rule <span aria-hidden="true">→</span></button
           >
         </form>
         {
@@ -109,22 +115,32 @@ const removeResult = Astro.getActionResult(
       <div class="crm-panel">
         <div class="crm-panel-heading">
           <div>
-            <div class="crm-kicker">Active rules</div><h2>
-              Current recipients
+            <div class="crm-kicker">Active notification rules</div><h2>
+              Who gets each alert
             </h2>
           </div>
         </div>
+        <p class="crm-panel-intro">
+          Each row is one routing rule. Removing it stops only that alert type
+          for that inbox.
+        </p>
         {
           rules.results.length ? (
-            <div class="crm-list crm-list-compact">
+            <div class="crm-list crm-list-compact crm-rule-list">
               {rules.results.map((rule) => (
-                <div class="crm-list-row">
+                <div class="crm-list-row crm-rule-row">
                   <div class="crm-list-main">
-                    <strong>{rule.recipient_email}</strong>
-                    <span>
+                    <span class="crm-rule-trigger">
+                      When:{" "}
                       {rule.event_type === "form_submitted"
-                        ? "Completed customer forms"
-                        : "New enquiries"}
+                        ? "Customer form completed"
+                        : "New enquiry received"}
+                    </span>
+                    <strong>Send to: {rule.recipient_email}</strong>
+                    <span class="crm-rule-help">
+                      {rule.event_type === "form_submitted"
+                        ? "Includes completed service supply forms and hire contracts."
+                        : "Includes enquiries received through the website or recorded by phone."}
                     </span>
                   </div>
                   <form
@@ -133,7 +149,7 @@ const removeResult = Astro.getActionResult(
                   >
                     <input type="hidden" name="id" value={rule.id} />
                     <button class="crm-small-button" type="submit">
-                      Remove
+                      Remove rule
                     </button>
                   </form>
                 </div>

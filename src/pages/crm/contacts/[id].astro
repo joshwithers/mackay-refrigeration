@@ -1,7 +1,7 @@
 ---
 import Base from "../../../layouts/Base.astro";
 import CrmNav from "../../../components/CrmNav.astro";
-import { actions } from "astro:actions";
+import { actions, isInputError } from "astro:actions";
 import { displayStatus, formTitle, isDemoRecord } from "../../../lib/crm-forms";
 import { runtimeEnv } from "../../../server/db";
 
@@ -79,6 +79,10 @@ const defaultEnquiry = enquiries.results[0];
 const sendResult = Astro.getActionResult(actions.staff.sendInvite);
 const noteResult = Astro.getActionResult(actions.staff.addNote);
 const statusResult = Astro.getActionResult(actions.staff.updateStatus);
+const updateResult = Astro.getActionResult(actions.staff.updateContact);
+const updateFieldErrors = isInputError(updateResult?.error)
+  ? updateResult.error.fields
+  : {};
 ---
 
 <Base
@@ -441,33 +445,145 @@ const statusResult = Astro.getActionResult(actions.staff.updateStatus);
 
       <aside class="crm-side-column">
         <div class="crm-panel crm-details-panel">
-          <div class="crm-kicker">Details</div><dl class="crm-details">
+          <div class="crm-panel-heading crm-details-heading">
             <div>
-              <dt>Email</dt><dd>
-                {
-                  contact.email ? (
-                    <a href={`mailto:${contact.email}`}>{contact.email}</a>
-                  ) : (
-                    "Not recorded"
-                  )
-                }
-              </dd>
-            </div><div>
-              <dt>Phone</dt><dd>
-                {
-                  contact.phone ? (
-                    <a href={`tel:${contact.phone}`}>{contact.phone}</a>
-                  ) : (
-                    "Not recorded"
-                  )
-                }
-              </dd>
-            </div><div>
-              <dt>Company</dt><dd>
-                {contact.organisation_name || "Not recorded"}
-              </dd>
+              <div class="crm-kicker">Details</div>
+              <h2>Contact details</h2>
             </div>
-          </dl>
+          </div>
+          {
+            user.role !== "readonly" ? (
+              <form
+                method="POST"
+                action={actions.staff.updateContact}
+                class="crm-form crm-contact-edit-form"
+              >
+                <input type="hidden" name="contactId" value={contact.id} />
+                <div class="form-group">
+                  <label class="form-label" for="contact-name">
+                    Name *
+                  </label>
+                  <input
+                    class="form-input"
+                    id="contact-name"
+                    name="name"
+                    value={contact.name}
+                    autocomplete="name"
+                    required
+                  />
+                  {updateFieldErrors.name?.[0] && (
+                    <p class="form-error" role="alert">
+                      {updateFieldErrors.name[0]}
+                    </p>
+                  )}
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="contact-company">
+                    Company
+                  </label>
+                  <input
+                    class="form-input"
+                    id="contact-company"
+                    name="company"
+                    value={contact.organisation_name || ""}
+                    autocomplete="organization"
+                    placeholder="Optional"
+                  />
+                  {updateFieldErrors.company?.[0] && (
+                    <p class="form-error" role="alert">
+                      {updateFieldErrors.company[0]}
+                    </p>
+                  )}
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="contact-email">
+                    Email
+                  </label>
+                  <input
+                    class="form-input"
+                    type="email"
+                    id="contact-email"
+                    name="email"
+                    value={contact.email || ""}
+                    autocomplete="email"
+                    placeholder="customer@example.com"
+                  />
+                  {updateFieldErrors.email?.[0] && (
+                    <p class="form-error" role="alert">
+                      {updateFieldErrors.email[0]}
+                    </p>
+                  )}
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="contact-phone">
+                    Phone
+                  </label>
+                  <input
+                    class="form-input"
+                    type="tel"
+                    id="contact-phone"
+                    name="phone"
+                    value={contact.phone || ""}
+                    autocomplete="tel"
+                    inputmode="tel"
+                    placeholder="07 4953 1245"
+                  />
+                  {updateFieldErrors.phone?.[0] && (
+                    <p class="form-error" role="alert">
+                      {updateFieldErrors.phone[0]}
+                    </p>
+                  )}
+                </div>
+                <p class="crm-form-hint">
+                  Changes update this customer everywhere in the CRM.
+                </p>
+                <button class="crm-secondary-btn" type="submit">
+                  Save contact details
+                </button>
+              </form>
+            ) : (
+              <dl class="crm-details">
+                <div>
+                  <dt>Email</dt>
+                  <dd>
+                    {contact.email ? (
+                      <a href={`mailto:${contact.email}`}>{contact.email}</a>
+                    ) : (
+                      "Not recorded"
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Phone</dt>
+                  <dd>
+                    {contact.phone ? (
+                      <a href={`tel:${contact.phone}`}>{contact.phone}</a>
+                    ) : (
+                      "Not recorded"
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Company</dt>
+                  <dd>{contact.organisation_name || "Not recorded"}</dd>
+                </div>
+              </dl>
+            )
+          }
+          {
+            updateResult?.data?.success && (
+              <p class="crm-success" role="status">
+                Contact details saved.
+              </p>
+            )
+          }
+          {
+            updateResult?.error && !isInputError(updateResult.error) && (
+              <p class="crm-error" role="alert">
+                We could not save those details. Please try again.
+              </p>
+            )
+          }
         </div>
         <div class="crm-panel">
           <div class="crm-kicker">Timeline</div><div class="crm-timeline">

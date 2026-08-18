@@ -86,6 +86,21 @@ const phoneEnquiryInput = z.object({
   message: z.string().trim().max(5000).optional(),
   urgency: z.enum(["standard", "urgent"]).default("standard"),
 });
+const contactDetailsInput = z.object({
+  contactId: z.string().min(1),
+  name: z.string().trim().min(1).max(200),
+  company: z.string().trim().max(200).default(""),
+  email: z.union([z.email(), z.literal("")]).default(""),
+  phone: z
+    .string()
+    .trim()
+    .max(40)
+    .refine(
+      (value) => !value || value.replace(/\D/g, "").length >= 6,
+      "Enter a valid phone number.",
+    )
+    .default(""),
+});
 
 type FormDataObject = Record<string, unknown>;
 
@@ -717,6 +732,76 @@ export const server = {
           ),
         });
         return { success: true, contactId, enquiryId };
+      },
+    }),
+    updateContact: defineAction({
+      accept: "form",
+      input: contactDetailsInput,
+      handler: async (input, context) => {
+        const user = context.locals.user;
+        if (!user || user.role === "readonly")
+          throw new ActionError({
+            code: "UNAUTHORIZED",
+            message: "Sign in required.",
+          });
+
+        const current = runtimeEnv();
+        const contact = await current.DB.prepare(
+          `SELECT id FROM contacts WHERE id = ?`,
+        )
+          .bind(input.contactId)
+          .first<{ id: string }>();
+        if (!contact)
+          throw new ActionError({
+            code: "NOT_FOUND",
+            message: "That contact no longer exists.",
+          });
+
+        const updatedAt = nowIso();
+        let organisationId: string | null = null;
+        if (input.company) {
+          const organisation = await current.DB.prepare(
+            `SELECT id FROM organisations WHERE lower(name) = lower(?)`,
+          )
+            .bind(input.company)
+            .first<{ id: string }>();
+          organisationId = organisation?.id ?? id();
+          if (!organisation) {
+            await current.DB.prepare(
+              `INSERT INTO organisations (id, name, created_at, updated_at)
+               VALUES (?, ?, ?, ?)`,
+            )
+              .bind(organisationId, input.company, updatedAt, updatedAt)
+              .run();
+          }
+        }
+
+        const email = input.email.trim();
+        const phone = input.phone.trim();
+        await current.DB.prepare(
+          `UPDATE contacts
+           SET name = ?, organisation_id = ?, email = ?, phone = ?,
+               normalised_email = ?, normalised_phone = ?, updated_at = ?
+           WHERE id = ?`,
+        )
+          .bind(
+            input.name,
+            organisationId,
+            email || null,
+            phone || null,
+            normaliseEmail(email) || null,
+            normalisePhone(phone) || null,
+            updatedAt,
+            contact.id,
+          )
+          .run();
+        await recordActivity({
+          contactId: contact.id,
+          actorId: user.id,
+          eventType: "contact_updated",
+          summary: "Contact details updated",
+        });
+        return { success: true, contactId: contact.id };
       },
     }),
     sendInvite: defineAction({

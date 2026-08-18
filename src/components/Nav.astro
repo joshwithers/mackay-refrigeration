@@ -104,6 +104,14 @@ const isCrm = context === 'crm';
 </div>
 
 <script is:inline>
+  // ─── Fixed-nav surface ───
+  const siteNav = document.querySelector('.site-nav');
+  const syncNavSurface = () => {
+    siteNav?.classList.toggle('is-scrolled', window.scrollY > 8);
+  };
+  syncNavSurface();
+  window.addEventListener('scroll', syncNavSurface, { passive: true });
+
   // ─── Theme toggle ───
   document.querySelectorAll('.theme-toggle').forEach(function(btn) {
     btn.addEventListener('click', function() {
