@@ -1,5 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
 import { getStaffBySession } from "./server/auth";
+import { allowsMutationRequest } from "./server/csrf";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const requestUrl = new URL(context.request.url);
@@ -10,6 +11,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (pathname !== "/" && pathname.endsWith("/")) {
     requestUrl.pathname = pathname.replace(/\/+$/, "");
     return context.redirect(`${requestUrl.pathname}${requestUrl.search}`, 308);
+  }
+
+  if (!allowsMutationRequest(context.request)) {
+    return new Response("Cross-site POST form submissions are forbidden", {
+      status: 403,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   }
 
   const session = context.cookies.get("crm_session")?.value;

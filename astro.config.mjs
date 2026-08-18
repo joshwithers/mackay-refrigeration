@@ -22,7 +22,9 @@ export default defineConfig({
     }),
   ],
   security: {
-    checkOrigin: true,
+    // src/middleware.ts performs the same origin check with a guarded
+    // Sec-Fetch-Site fallback for embedded browsers that omit Origin.
+    checkOrigin: false,
     actionBodySizeLimit: 1024 * 1024,
   },
   markdown: {
