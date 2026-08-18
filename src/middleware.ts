@@ -1,6 +1,12 @@
 import { defineMiddleware } from "astro:middleware";
 import { getStaffBySession } from "./server/auth";
-import { allowsMutationRequest } from "./server/csrf";
+import {
+  allowsMutationRequest,
+  createCsrfCookieValue,
+  CSRF_COOKIE_NAME,
+  isValidCsrfCookieValue,
+  pathNeedsCsrfCookie,
+} from "./server/csrf";
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const requestUrl = new URL(context.request.url);
@@ -13,7 +19,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(`${requestUrl.pathname}${requestUrl.search}`, 308);
   }
 
-  if (!allowsMutationRequest(context.request)) {
+  const csrfCookie = context.cookies.get(CSRF_COOKIE_NAME)?.value;
+
+  if (!allowsMutationRequest(context.request, csrfCookie)) {
     return new Response("Cross-site POST form submissions are forbidden", {
       status: 403,
       headers: {
@@ -21,6 +29,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
         "Content-Type": "text/plain; charset=utf-8",
         "X-Content-Type-Options": "nosniff",
       },
+    });
+  }
+
+  if (
+    context.request.method === "GET" &&
+    pathNeedsCsrfCookie(pathname) &&
+    !isValidCsrfCookieValue(csrfCookie)
+  ) {
+    context.cookies.set(CSRF_COOKIE_NAME, createCsrfCookieValue(), {
+      path: "/",
+      httpOnly: true,
+      secure: true,
+      sameSite: "strict",
+      maxAge: 24 * 60 * 60,
     });
   }
 
