@@ -2,14 +2,28 @@
 // Nav.astro — Fixed navigation bar with theme toggle and menu panel
 import { menuGroups } from '../config/navigation';
 import { url } from '../config/site';
+
+interface Props {
+  context?: 'site' | 'crm';
+}
+
+const { context = 'site' } = Astro.props;
+const isCrm = context === 'crm';
 ---
 
-<nav class="site-nav" aria-label="Primary">
-  <a href={url('/')} class="logo" aria-label="Mackay Refrigeration & Air-Conditioning — Home">
+<nav class:list={["site-nav", { "site-nav-crm": isCrm }]} aria-label={isCrm ? "CRM masthead" : "Primary"}>
+  <a href={url(isCrm ? '/crm' : '/')} class:list={["logo", { "logo-crm": isCrm }]} aria-label={isCrm ? "Mackay Refrigeration staff CRM — Dashboard" : "Mackay Refrigeration & Air-Conditioning — Home"}>
     <svg viewBox="0 0 28 28" aria-hidden="true" focusable="false">
       <path d="M14 2 L14 26 M8 6 L14 12 L20 6 M8 22 L14 16 L20 22 M2 14 L26 14 M6 8 L12 14 L6 20 M22 8 L16 14 L22 20" stroke="var(--frost)" stroke-width="1.5" fill="none" stroke-linecap="round"/>
     </svg>
-    <span>Mackay Refrigeration &amp; <span class="logo-aircon">Air-Conditioning<span class="dot">.</span></span></span>
+    {isCrm ? (
+      <span class="logo-crm-copy">
+        <strong>Mackay Refrigeration</strong>
+        <small>Staff CRM</small>
+      </span>
+    ) : (
+      <span>Mackay Refrigeration &amp; <span class="logo-aircon">Air-Conditioning<span class="dot">.</span></span></span>
+    )}
   </a>
   <ul>
     <li>
@@ -20,7 +34,7 @@ import { url } from '../config/site';
         </svg>
       </a>
     </li>
-    <li class="nav-phone-text"><a href={url('/contact')}>Contact</a></li>
+    {!isCrm && <li class="nav-phone-text"><a href={url('/contact')}>Contact</a></li>}
     <li>
       <button class="theme-toggle" aria-label="Toggle light/dark mode">
         <!-- Sun — visible in dark mode -->

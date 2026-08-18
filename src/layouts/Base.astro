@@ -14,6 +14,8 @@ interface Props {
 }
 
 const { title, description, noindex = false } = Astro.props;
+const isCrmPage =
+  Astro.url.pathname === "/crm" || Astro.url.pathname.startsWith("/crm/");
 
 const localBusinessSchema = {
   "@context": "https://schema.org",
@@ -99,7 +101,7 @@ const localBusinessSchema = {
       )
     }
   </head>
-  <body>
+  <body class:list={{ "crm-page": isCrmPage }}>
     <a class="skip-link" href="#main-content">Skip to content</a>
     <div class="grid-bg" aria-hidden="true"></div>
 
@@ -109,8 +111,8 @@ const localBusinessSchema = {
       <div class="vapour-blob"></div>
     </div>
 
-    <TempGauge />
-    <Nav />
+    {!isCrmPage && <TempGauge />}
+    <Nav context={isCrmPage ? "crm" : "site"} />
 
     <main id="main-content" class="content">
       <slot />
