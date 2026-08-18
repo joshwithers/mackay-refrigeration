@@ -3334,11 +3334,33 @@ body {
   line-height: 1.6;
   text-wrap: pretty;
 }
-.crm-rule-list {
-  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+.crm-rule-groups {
+  display: grid;
+  gap: 14px;
 }
-.crm-rule-row {
-  align-items: flex-start;
+.crm-rule-group {
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  background: color-mix(in srgb, var(--bg-deep) 78%, transparent);
+}
+.crm-rule-group-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 68%, transparent);
+}
+.crm-rule-group-heading h3 {
+  margin: 0 0 4px;
+  color: var(--white);
+  font-size: 15px;
+}
+.crm-rule-group-heading p {
+  margin: 0;
+  color: var(--white-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  text-wrap: pretty;
 }
 .crm-rule-trigger {
   width: fit-content;
@@ -3350,9 +3372,52 @@ body {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.crm-rule-help {
-  max-width: 52ch;
-  line-height: 1.5;
+.crm-rule-recipients {
+  display: grid;
+}
+.crm-rule-recipient {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 0;
+  padding: 13px 16px;
+}
+.crm-rule-recipient + .crm-rule-recipient {
+  border-top: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+}
+.crm-rule-recipient > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.crm-rule-recipient strong {
+  color: var(--white);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.crm-rule-label,
+.crm-rule-status {
+  color: var(--frost);
+  font-family: var(--font-mono-stack);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.crm-rule-fallback {
+  background: color-mix(in srgb, var(--frost) 5%, transparent);
+}
+.crm-rule-status {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  border: 1px solid color-mix(in srgb, var(--frost) 34%, var(--line));
+  color: var(--white-dim);
+}
+.crm-rule-note {
+  padding: 2px 2px 0;
+  color: var(--white-dim);
+  font-size: 12px;
+  line-height: 1.55;
   text-wrap: pretty;
 }
 .crm-details div {

@@ -19,6 +19,23 @@ const rules = await current.DB.prepare(
   recipient_email: string;
   updated_at: string;
 }>();
+const fallbackEmail =
+  current.STAFF_NOTIFICATION_EMAIL || "service@mackayrefrig.com.au";
+const notificationGroups = [
+  {
+    eventType: "enquiry_created",
+    title: "New enquiry",
+    description: "Website contact forms and enquiries recorded by phone.",
+  },
+  {
+    eventType: "form_submitted",
+    title: "Completed customer form",
+    description: "Completed service supply forms and hire contracts.",
+  },
+].map((group) => ({
+  ...group,
+  rules: rules.results.filter((rule) => rule.event_type === group.eventType),
+}));
 const saveResult = Astro.getActionResult(actions.staff.saveNotificationRule);
 const removeResult = Astro.getActionResult(
   actions.staff.removeNotificationRule,
@@ -58,9 +75,10 @@ const removeResult = Astro.getActionResult(
         <div class="crm-settings-explainer">
           <strong>How notification rules work</strong>
           <p>
-            Choose an event and an inbox. The CRM emails that inbox every time
-            the event happens. Add the same address once for each alert type it
-            should receive.
+            One rule connects one alert type to one staff inbox. Add the same
+            address to both alert types if it should receive every notification.
+            If an alert type has no rules, it goes to the fallback inbox shown
+            under Current delivery.
           </p>
         </div>
         <form
@@ -115,50 +133,63 @@ const removeResult = Astro.getActionResult(
       <div class="crm-panel">
         <div class="crm-panel-heading">
           <div>
-            <div class="crm-kicker">Active notification rules</div><h2>
-              Who gets each alert
+            <div class="crm-kicker">Current delivery</div><h2>
+              Who receives what
             </h2>
           </div>
         </div>
         <p class="crm-panel-intro">
-          Each row is one routing rule. Removing it stops only that alert type
-          for that inbox.
+          These are the effective recipients right now. Removing a rule affects
+          only that alert type and inbox.
         </p>
         {
-          rules.results.length ? (
-            <div class="crm-list crm-list-compact crm-rule-list">
-              {rules.results.map((rule) => (
-                <div class="crm-list-row crm-rule-row">
-                  <div class="crm-list-main">
-                    <span class="crm-rule-trigger">
-                      When:{" "}
-                      {rule.event_type === "form_submitted"
-                        ? "Customer form completed"
-                        : "New enquiry received"}
-                    </span>
-                    <strong>Send to: {rule.recipient_email}</strong>
-                    <span class="crm-rule-help">
-                      {rule.event_type === "form_submitted"
-                        ? "Includes completed service supply forms and hire contracts."
-                        : "Includes enquiries received through the website or recorded by phone."}
-                    </span>
+          (
+            <div class="crm-rule-groups">
+              {notificationGroups.map((group) => (
+                <section class="crm-rule-group">
+                  <div class="crm-rule-group-heading">
+                    <span class="crm-rule-trigger">When</span>
+                    <div>
+                      <h3>{group.title}</h3>
+                      <p>{group.description}</p>
+                    </div>
                   </div>
-                  <form
-                    method="POST"
-                    action={actions.staff.removeNotificationRule}
-                  >
-                    <input type="hidden" name="id" value={rule.id} />
-                    <button class="crm-small-button" type="submit">
-                      Remove rule
-                    </button>
-                  </form>
-                </div>
+                  <div class="crm-rule-recipients">
+                    {group.rules.length ? (
+                      group.rules.map((rule) => (
+                        <div class="crm-rule-recipient">
+                          <div>
+                            <span class="crm-rule-label">Send to</span>
+                            <strong>{rule.recipient_email}</strong>
+                          </div>
+                          <form
+                            method="POST"
+                            action={actions.staff.removeNotificationRule}
+                          >
+                            <input type="hidden" name="id" value={rule.id} />
+                            <button class="crm-small-button" type="submit">
+                              Remove rule
+                            </button>
+                          </form>
+                        </div>
+                      ))
+                    ) : (
+                      <div class="crm-rule-recipient crm-rule-fallback">
+                        <div>
+                          <span class="crm-rule-label">Fallback inbox</span>
+                          <strong>{fallbackEmail}</strong>
+                        </div>
+                        <span class="crm-rule-status">No custom rules</span>
+                      </div>
+                    )}
+                  </div>
+                </section>
               ))}
-            </div>
-          ) : (
-            <div class="crm-empty">
-              No CRM rules yet. Notifications use the configured fallback staff
-              email until you add a recipient here.
+              <div class="crm-rule-note">
+                Adding the first custom rule for an alert type replaces its
+                fallback delivery. Add another rule to send that alert to more
+                than one inbox.
+              </div>
             </div>
           )
         }
