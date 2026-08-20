@@ -11,6 +11,11 @@ import {
 export const onRequest = defineMiddleware(async (context, next) => {
   const requestUrl = new URL(context.request.url);
   const pathname = requestUrl.pathname;
+  const isPrivatePage =
+    pathname.startsWith("/crm") ||
+    pathname.startsWith("/forms/") ||
+    ((pathname === "/hire-contract" || pathname === "/service-supply") &&
+      requestUrl.searchParams.has("token"));
 
   // Keep one canonical URL shape across the Worker, including old bookmarks
   // and links that still contain a trailing slash. Root remains `/`.
@@ -65,18 +70,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   );
   response.headers.set(
     "Referrer-Policy",
-    pathname.startsWith("/crm") || pathname.startsWith("/forms/")
-      ? "no-referrer"
-      : "strict-origin-when-cross-origin",
+    isPrivatePage ? "no-referrer" : "strict-origin-when-cross-origin",
   );
-  if (
-    pathname.startsWith("/crm") ||
-    pathname.startsWith("/forms/") ||
-    pathname.startsWith("/_actions/")
-  ) {
+  if (isPrivatePage || pathname.startsWith("/_actions/")) {
     response.headers.set("Cache-Control", "private, no-store");
   }
-  if (pathname.startsWith("/crm") || pathname.startsWith("/forms/")) {
+  if (isPrivatePage) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow, noarchive");
     response.headers.set("Content-Security-Policy", "frame-ancestors 'none'");
   }

@@ -5,6 +5,7 @@ import { domain } from '../config/site';
 import MarkdownForm from '../components/MarkdownForm.astro';
 import { getEntry } from 'astro:content';
 import { actions } from 'astro:actions';
+import { getValidInviteContact } from '../server/form-invites';
 
 export const prerender = false;
 
@@ -18,11 +19,34 @@ const actionData = actionResult?.data as {
   errors?: Record<string, string>;
   values?: Record<string, string | string[]>;
 } | undefined;
+let inviteValid = actionData?.success === true && actionData.formType === 'hire-contract';
+let inviteValues: Record<string, string | string[]> = {};
+if (token && !inviteValid) {
+  try {
+    const contact = await getValidInviteContact('hire-contract', token);
+    if (contact) {
+      inviteValid = true;
+      inviteValues = {
+        hirer_name: contact.name,
+        hirer_email: contact.email || '',
+        hirer_phone: contact.phone || '',
+        hirer_company: contact.company || '',
+      };
+    }
+  } catch {
+    // The secure-link notice below also covers unavailable bindings.
+  }
+}
+const formValues =
+  actionData?.formType === 'hire-contract' && actionData.values
+    ? actionData.values
+    : inviteValues;
 ---
 
 <Base
   title="Hire Contract Conditions"
   description="Hire contract conditions and agreement form for equipment hire from Mackay Refrigeration & Air-Conditioning, Mackay QLD."
+  noindex={Boolean(token)}
 >
 
   <!-- ── Legal header ── -->
@@ -255,14 +279,31 @@ const actionData = actionResult?.data as {
       </p>
     </div>
 
-    <MarkdownForm
-      definition={definition.data}
-      formType="hire-contract"
-      inviteToken={token}
-      errors={actionData?.formType === 'hire-contract' ? actionData.errors : undefined}
-      values={actionData?.formType === 'hire-contract' ? actionData.values : undefined}
-      success={actionData?.success === true && actionData.formType === 'hire-contract'}
-    />
+    {inviteValid ? (
+      <MarkdownForm
+        definition={definition.data}
+        formType="hire-contract"
+        inviteToken={token}
+        errors={actionData?.formType === 'hire-contract' ? actionData.errors : undefined}
+        values={formValues}
+        success={actionData?.success === true && actionData.formType === 'hire-contract'}
+      />
+    ) : (
+      <div class="form-confirmation" role={token ? 'alert' : 'note'}>
+        <div class="hero-badge">
+          <span class="pulse" /> Secure link required
+        </div>
+        <h2>{token ? 'This agreement link is unavailable' : 'Ready to complete the agreement?'}</h2>
+        <p>
+          {token
+            ? 'Ask Mackay Refrigeration to send you a new secure agreement link, or contact the team if you need help.'
+            : 'Mackay Refrigeration sends each customer a secure link when the hire schedule is ready to complete.'}
+        </p>
+        <a class="cta-btn" href="/contact">
+          Contact Mackay Refrigeration <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    )}
 
     <div class="legacy-hire-form" hidden>
       <input type="hidden" name="form-name" value="hire-contract" />

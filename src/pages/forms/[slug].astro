@@ -4,7 +4,7 @@ import Footer from "../../components/Footer.astro";
 import MarkdownForm from "../../components/MarkdownForm.astro";
 import { getEntry } from "astro:content";
 import { actions } from "astro:actions";
-import { hashSecret, runtimeEnv } from "../../server/db";
+import { getValidInviteContact } from "../../server/form-invites";
 
 export const prerender = false;
 
@@ -25,25 +25,24 @@ const actionData = actionResult?.data as
       values?: Record<string, string | string[]>;
     }
   | undefined;
+
+// Hire customers must review the complete contract before accepting it. Keep
+// POST action results on this legacy route so an already-open form can still
+// finish cleanly during a deployment.
+if (slug === "hire-contract" && !actionResult) {
+  return Astro.redirect(
+    token
+      ? `/hire-contract?token=${encodeURIComponent(token)}`
+      : "/hire-contract",
+    308,
+  );
+}
+
 let inviteValid = actionData?.success === true && actionData.formType === slug;
 let values: Record<string, string | string[]> = {};
 if (token && !inviteValid) {
   try {
-    const contact = await runtimeEnv()
-      .DB.prepare(
-        `SELECT c.name, c.email, c.phone, o.name AS company
-       FROM form_invites i
-       JOIN contacts c ON c.id = i.contact_id
-       LEFT JOIN organisations o ON o.id = c.organisation_id
-       WHERE i.form_slug = ? AND i.token_hash = ? AND i.completed_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?`,
-      )
-      .bind(slug, await hashSecret(token), new Date().toISOString())
-      .first<{
-        name: string;
-        email: string | null;
-        phone: string | null;
-        company: string | null;
-      }>();
+    const contact = await getValidInviteContact(slug, token);
     if (contact) {
       inviteValid = true;
       values =

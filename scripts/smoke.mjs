@@ -96,6 +96,8 @@ check(
 for (const [from, to] of [
   ["/contact/", "/contact"],
   ["/crm/login/", "/crm/login"],
+  ["/service-supply", "/forms/service-supply"],
+  ["/forms/hire-contract", "/hire-contract"],
 ]) {
   const response = await request(from, { redirect: "manual" });
   check(
@@ -107,6 +109,28 @@ for (const [from, to] of [
     `${from} redirected to ${response.headers.get("location")} instead of ${to}`,
   );
 }
+
+const legacyServiceInvite = await request(
+  "/service-supply?token=invalid-smoke-token",
+  { redirect: "manual" },
+);
+check(
+  legacyServiceInvite.status === 307,
+  `/service-supply?token= returned ${legacyServiceInvite.status} instead of 307`,
+);
+check(
+  legacyServiceInvite.headers.get("location") ===
+    "/forms/service-supply?token=invalid-smoke-token",
+  "/service-supply?token= did not preserve its invite token",
+);
+check(
+  legacyServiceInvite.headers.get("cache-control")?.includes("no-store"),
+  "/service-supply?token= is missing no-store caching",
+);
+check(
+  legacyServiceInvite.headers.get("referrer-policy") === "no-referrer",
+  "/service-supply?token= is missing its private-page referrer policy",
+);
 
 for (const privatePath of ["/crm", "/crm/forms", "/crm/contacts"]) {
   const response = await request(privatePath, { redirect: "manual" });
@@ -139,6 +163,36 @@ check(
 check(
   !secureForm.body.includes("analytics.ahrefs.com"),
   "/forms/service-supply loads public-site analytics",
+);
+
+const publicHire = await expectPage(
+  "/hire-contract",
+  "Hire Contract Conditions",
+);
+check(
+  !publicHire.body.includes('<form class="markdown-form"'),
+  "/hire-contract exposes an agreement form without a secure invite",
+);
+
+const privateHire = await expectPage(
+  "/hire-contract?token=invalid-smoke-token",
+  "This agreement link is unavailable",
+);
+check(
+  privateHire.response.headers.get("cache-control")?.includes("no-store"),
+  "/hire-contract?token= is missing no-store caching",
+);
+check(
+  privateHire.response.headers.get("x-robots-tag")?.includes("noindex"),
+  "/hire-contract?token= is missing X-Robots-Tag noindex",
+);
+check(
+  privateHire.response.headers.get("referrer-policy") === "no-referrer",
+  "/hire-contract?token= is missing its private-page referrer policy",
+);
+check(
+  !privateHire.body.includes("analytics.ahrefs.com"),
+  "/hire-contract?token= loads public-site analytics",
 );
 
 const missing = await request("/this-route-must-not-exist");
@@ -177,6 +231,12 @@ for (const sitemapLocation of sitemapLocations) {
   check(
     !pageLocations.some((url) => new URL(url).pathname.startsWith("/crm")),
     `${sitemapLocation} exposes CRM routes`,
+  );
+  check(
+    !pageLocations.some((url) =>
+      ["/service-supply"].includes(new URL(url).pathname),
+    ),
+    `${sitemapLocation} exposes invite-only form aliases`,
   );
   check(
     !pageLocations.some(

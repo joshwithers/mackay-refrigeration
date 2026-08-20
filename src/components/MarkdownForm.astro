@@ -107,6 +107,11 @@ const checked = (id: string, option: string): boolean => {
                               ? "checkbox-group"
                               : "radio-group",
                           ]}
+                          data-required-checkbox-group={
+                            field.type === "checkbox" && field.required
+                              ? "true"
+                              : undefined
+                          }
                         >
                           {(field.options ?? []).map((option, optionIndex) => {
                             const optionId = `${id}-${optionIndex}`;
@@ -127,7 +132,11 @@ const checked = (id: string, option: string): boolean => {
                                       ? checked(field.id, option.value)
                                       : current === option.value
                                   }
-                                  required={field.required && optionIndex === 0}
+                                  required={
+                                    field.type === "radio" &&
+                                    field.required &&
+                                    optionIndex === 0
+                                  }
                                 />
                                 {option.label}
                               </label>
@@ -216,3 +225,28 @@ const checked = (id: string, option: string): boolean => {
     </form>
   )
 }
+
+<script>
+  document
+    .querySelectorAll<HTMLElement>('[data-required-checkbox-group="true"]')
+    .forEach((group) => {
+      const checkboxes = Array.from(
+        group.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+      );
+      const validationTarget = checkboxes[0];
+      if (!validationTarget) return;
+
+      const syncValidity = () => {
+        validationTarget.setCustomValidity(
+          checkboxes.some((checkbox) => checkbox.checked)
+            ? ""
+            : "Select at least one option.",
+        );
+      };
+
+      checkboxes.forEach((checkbox) =>
+        checkbox.addEventListener("change", syncValidity),
+      );
+      syncValidity();
+    });
+</script>

@@ -1,44 +1,8 @@
 ---
-import Base from '../layouts/Base.astro';
-import PageHero from '../components/PageHero.astro';
-import Footer from '../components/Footer.astro';
-import MarkdownForm from '../components/MarkdownForm.astro';
-import { getEntry } from 'astro:content';
-import { actions } from 'astro:actions';
-
 export const prerender = false;
 
-const definition = await getEntry('forms', 'service-supply');
-if (!definition) throw new Error('The service supply form definition is missing.');
-const token = Astro.url.searchParams.get('token') || '';
-const actionResult = Astro.getActionResult(actions.forms.submit);
-const actionData = actionResult?.data as {
-  success?: boolean;
-  formType?: string;
-  errors?: Record<string, string>;
-  values?: Record<string, string | string[]>;
-} | undefined;
+return Astro.redirect(
+  `/forms/service-supply${Astro.url.search}`,
+  Astro.url.searchParams.has("token") ? 307 : 308,
+);
 ---
-
-<Base
-  title="Service supply form"
-  description="Provide the site and service information Mackay Refrigeration needs to get started."
->
-  <PageHero
-    badge="Service details"
-    title={`Help us get <span class="cold">started</span>`}
-    sub={definition.data.description}
-  />
-
-  <div class="form-page-shell">
-    <MarkdownForm
-      definition={definition.data}
-      formType="service-supply"
-      inviteToken={token}
-      errors={actionData?.formType === 'service-supply' ? actionData.errors : undefined}
-      values={actionData?.formType === 'service-supply' ? actionData.values : undefined}
-      success={actionData?.success === true && actionData.formType === 'service-supply'}
-    />
-  </div>
-  <Footer />
-</Base>

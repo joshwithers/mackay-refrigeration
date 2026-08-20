@@ -18,7 +18,14 @@ export default defineConfig({
   compressHTML: true,
   integrations: [
     sitemap({
-      filter: (page) => !new URL(page).pathname.startsWith("/crm"),
+      filter: (page) => {
+        const pathname = new URL(page).pathname;
+        return (
+          !pathname.startsWith("/crm") &&
+          !pathname.startsWith("/forms/") &&
+          pathname !== "/service-supply"
+        );
+      },
     }),
   ],
   security: {

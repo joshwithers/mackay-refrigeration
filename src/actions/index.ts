@@ -857,7 +857,11 @@ export const server = {
             inviteTime,
           ),
         ]);
-        const link = `${publicBaseUrl(context.request)}/forms/${input.formType}?token=${encodeURIComponent(token)}`;
+        const formPath =
+          input.formType === "hire-contract"
+            ? "/hire-contract"
+            : `/forms/${input.formType}`;
+        const link = `${publicBaseUrl(context.request)}${formPath}?token=${encodeURIComponent(token)}`;
         const title =
           input.formType === "hire-contract"
             ? "Hire contract"
